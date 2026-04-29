@@ -110,10 +110,9 @@ test('buildUrl produces clean URL with empty args', () => {
   assert.strictEqual(url, 'https://acme.freshdesk.com/api/v2/solutions/categories');
 });
 
-test('buildUrl wraps search/tickets query value in double-quotes', () => {
+test('buildUrl does not add quotes to search/tickets query (quoting is handled by freshdeskFetch)', () => {
   const url = buildUrl('https://acme.freshdesk.com/api/v2', '/search/tickets', { query: 'status:4' });
-  // The query value must be "status:4" (with quotes) in the URL
-  assert.ok(url.includes('query='), 'should have query param');
   const parsed = new URL(url);
-  assert.strictEqual(parsed.searchParams.get('query'), '"status:4"');
+  // buildUrl is generic — no special quoting here
+  assert.strictEqual(parsed.searchParams.get('query'), 'status:4');
 });

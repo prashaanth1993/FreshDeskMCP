@@ -42,8 +42,6 @@ export function buildTools(oas) {
 
 /**
  * Substitute {param} placeholders in urlPath, append remaining args as query string.
- * For the /search/tickets path, wraps the 'query' param value in double-quotes
- * as required by the Freshdesk search API: ?query="expression"
  */
 export function buildUrl(baseUrl, urlPath, args) {
   let path = urlPath;
@@ -54,11 +52,7 @@ export function buildUrl(baseUrl, urlPath, args) {
     if (path.includes(placeholder)) {
       path = path.replace(placeholder, encodeURIComponent(String(value)));
     } else {
-      // Freshdesk search/tickets requires query value wrapped in double-quotes
-      const wrappedValue = (urlPath === '/search/tickets' && key === 'query')
-        ? `"${value}"`
-        : String(value);
-      query.set(key, wrappedValue);
+      query.set(key, String(value));
     }
   }
 
@@ -72,10 +66,15 @@ export function buildUrl(baseUrl, urlPath, args) {
  * auth: "Basic <base64>" header value
  */
 export async function freshdeskFetch(baseUrl, auth, method, path, args) {
-  const url = buildUrl(baseUrl, path, args);
+  // Freshdesk search/tickets requires query value wrapped in double-quotes
+  const processedArgs = (path === '/search/tickets' && args?.query !== undefined)
+    ? { ...args, query: `"${args.query}"` }
+    : args;
+
+  const url = buildUrl(baseUrl, path, processedArgs);
   const res = await fetch(url, {
     method,
-    headers: { Authorization: auth, 'Content-Type': 'application/json' },
+    headers: { Authorization: auth },
   });
 
   if (!res.ok) {
