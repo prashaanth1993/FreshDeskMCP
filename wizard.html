@@ -6,114 +6,74 @@
 <title>Freshdesk MCP Chat — Setup Wizard</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
-    min-height: 100vh;
-    padding: 40px 20px 80px;
+    background: #0f1117; color: #e2e8f0;
+    min-height: 100vh; padding: 40px 20px 80px;
   }
-
   .container { max-width: 680px; margin: 0 auto; }
 
-  header { text-align: center; margin-bottom: 48px; }
+  header { text-align: center; margin-bottom: 32px; }
   header h1 { font-size: 1.75rem; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; }
-  header p { color: #94a3b8; font-size: 0.95rem; }
+  header p  { color: #94a3b8; font-size: 0.95rem; }
 
-  .progress-bar {
-    background: #1e2533;
-    border-radius: 8px;
-    height: 6px;
-    margin-bottom: 48px;
-    overflow: hidden;
+  /* OS selector */
+  .os-bar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 40px;
   }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #6366f1, #818cf8);
-    border-radius: 8px;
-    transition: width 0.4s ease;
-  }
-
-  .step {
+  .os-btn {
     background: #1a1f2e;
     border: 1px solid #2d3548;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    overflow: hidden;
-    transition: border-color 0.2s;
+    border-radius: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 18px;
+    transition: all 0.15s;
   }
-  .step.done { border-color: #22c55e; }
+  .os-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+  .os-btn.active { background: #1e2040; border-color: #6366f1; color: #a5b4fc; }
+
+  /* Progress */
+  .progress-bar { background: #1e2533; border-radius: 8px; height: 6px; margin-bottom: 40px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 8px; transition: width 0.4s ease; }
+
+  /* Steps */
+  .step { background: #1a1f2e; border: 1px solid #2d3548; border-radius: 12px; margin-bottom: 16px; overflow: hidden; transition: border-color 0.2s; }
+  .step.done   { border-color: #22c55e; }
   .step.active { border-color: #6366f1; }
 
-  .step-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 20px 24px;
-    cursor: pointer;
-    user-select: none;
-  }
-
+  .step-header { display: flex; align-items: center; gap: 16px; padding: 20px 24px; cursor: pointer; user-select: none; }
   .step-num {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #2d3548;
-    color: #94a3b8;
-    font-weight: 700;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #2d3548; color: #94a3b8;
+    font-weight: 700; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     transition: background 0.2s, color 0.2s;
   }
-  .step.done .step-num { background: #166534; color: #4ade80; }
+  .step.done   .step-num { background: #166534; color: #4ade80; }
   .step.active .step-num { background: #3730a3; color: #a5b4fc; }
 
   .step-title-group { flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .step-title { font-weight: 600; font-size: 1rem; color: #cbd5e1; }
-  .step.done .step-title { color: #4ade80; }
+  .step.done   .step-title { color: #4ade80; }
   .step.active .step-title { color: #a5b4fc; }
 
-  .detect-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 20px;
-    white-space: nowrap;
-  }
+  .detect-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
   .detect-badge.checking  { background: #1e2533; color: #64748b; }
   .detect-badge.detected  { background: #14532d; color: #4ade80; }
   .detect-badge.not-found { background: #1e2533; color: #475569; }
-
-  .detect-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
-  }
+  .detect-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
   .checking  .detect-dot { background: #475569; animation: pulse 1.5s ease-in-out infinite; }
   .detected  .detect-dot { background: #4ade80; }
   .not-found .detect-dot { background: #475569; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-  .step-check {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 2px solid #4b5563;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 0.75rem;
-    transition: all 0.2s;
-  }
+  .step-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #4b5563; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; transition: all 0.2s; }
   .step.done .step-check { background: #166534; border-color: #4ade80; color: #4ade80; }
 
   .step-body { padding: 0 24px 24px; display: none; }
@@ -121,114 +81,56 @@
 
   .step-desc { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
 
+  /* OS-specific blocks hidden by default, shown via JS */
+  .os-win, .os-mac, .os-linux { display: none; }
+
   .download-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #6366f1;
-    color: #fff;
-    text-decoration: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    margin-bottom: 16px;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #6366f1; color: #fff; text-decoration: none;
+    padding: 10px 20px; border-radius: 8px;
+    font-weight: 600; font-size: 0.9rem; margin-bottom: 16px;
     transition: background 0.15s;
   }
   .download-btn:hover { background: #4f46e5; }
+  .download-btn.secondary { background: #2d3548; }
+  .download-btn.secondary:hover { background: #3d4a64; }
 
   .cmd-block {
-    background: #0d1117;
-    border: 1px solid #2d3548;
-    border-radius: 8px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    background: #0d1117; border: 1px solid #2d3548; border-radius: 8px;
+    padding: 12px 16px; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; margin-bottom: 12px;
   }
-  .cmd-text {
-    font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
-    font-size: 0.88rem;
-    color: #7dd3fc;
-    word-break: break-all;
-  }
+  .cmd-text { font-family: 'Cascadia Code','Consolas','Courier New',monospace; font-size: 0.88rem; color: #7dd3fc; word-break: break-all; }
   .copy-btn {
-    background: #2d3548;
-    border: none;
-    border-radius: 6px;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 6px 12px;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    transition: background 0.15s, color 0.15s;
-    flex-shrink: 0;
+    background: #2d3548; border: none; border-radius: 6px; color: #94a3b8;
+    cursor: pointer; padding: 6px 12px; font-size: 0.78rem; white-space: nowrap;
+    transition: background 0.15s, color 0.15s; flex-shrink: 0;
   }
   .copy-btn:hover { background: #3d4a64; color: #e2e8f0; }
   .copy-btn.copied { background: #166534; color: #4ade80; }
 
-  .note {
-    background: #1e2533;
-    border-left: 3px solid #6366f1;
-    border-radius: 0 6px 6px 0;
-    padding: 10px 14px;
-    font-size: 0.85rem;
-    color: #94a3b8;
-    margin-bottom: 16px;
-    line-height: 1.5;
-  }
+  .note { background: #1e2533; border-left: 3px solid #6366f1; border-radius: 0 6px 6px 0; padding: 10px 14px; font-size: 0.85rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.5; }
   .note.warn { border-left-color: #f59e0b; }
   .note strong { color: #e2e8f0; }
 
   .env-fields { margin-bottom: 16px; }
-  .env-row {
-    background: #0d1117;
-    border: 1px solid #2d3548;
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-  }
-  .env-key {
-    font-family: 'Cascadia Code', 'Consolas', monospace;
-    font-size: 0.85rem;
-    color: #7dd3fc;
-    margin-bottom: 4px;
-  }
+  .env-row { background: #0d1117; border: 1px solid #2d3548; border-radius: 8px; padding: 14px 16px; margin-bottom: 8px; }
+  .env-key { font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.85rem; color: #7dd3fc; margin-bottom: 4px; }
   .env-hint { font-size: 0.82rem; color: #64748b; line-height: 1.4; }
 
   .mark-done-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #1e3a2f;
-    border: 1px solid #166534;
-    border-radius: 8px;
-    color: #4ade80;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 10px 20px;
-    margin-top: 8px;
-    transition: background 0.15s;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #1e3a2f; border: 1px solid #166534; border-radius: 8px;
+    color: #4ade80; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    padding: 10px 20px; margin-top: 8px; transition: background 0.15s;
   }
   .mark-done-btn:hover { background: #166534; }
 
   .launch-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #6366f1;
-    border: none;
-    border-radius: 8px;
-    color: #fff;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 700;
-    padding: 12px 28px;
-    margin-top: 8px;
-    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #6366f1; border: none; border-radius: 8px; color: #fff;
+    cursor: pointer; font-size: 0.95rem; font-weight: 700;
+    padding: 12px 28px; margin-top: 8px; text-decoration: none;
     transition: background 0.15s;
   }
   .launch-btn:hover { background: #4f46e5; }
@@ -237,15 +139,7 @@
   .all-done h2 { font-size: 1.5rem; color: #4ade80; margin-bottom: 12px; }
   .all-done p { color: #94a3b8; margin-bottom: 24px; }
 
-  .reset-link {
-    display: block;
-    text-align: center;
-    color: #475569;
-    font-size: 0.8rem;
-    margin-top: 48px;
-    cursor: pointer;
-    text-decoration: underline;
-  }
+  .reset-link { display: block; text-align: center; color: #475569; font-size: 0.8rem; margin-top: 48px; cursor: pointer; text-decoration: underline; }
   .reset-link:hover { color: #64748b; }
 </style>
 </head>
@@ -257,35 +151,61 @@
     <p>Follow these steps to install and launch your AI support assistant.</p>
   </header>
 
+  <!-- OS Selector -->
+  <div class="os-bar">
+    <button class="os-btn" id="os-btn-windows" onclick="setOS('windows')">🪟 Windows</button>
+    <button class="os-btn" id="os-btn-mac"     onclick="setOS('mac')">🍎 macOS</button>
+    <button class="os-btn" id="os-btn-linux"   onclick="setOS('linux')">🐧 Linux</button>
+  </div>
+
   <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 
-  <!-- Step 1: Node.js (manual) -->
+  <!-- ── Step 1: Node.js ── -->
   <div class="step" id="step-1">
     <div class="step-header" onclick="toggle(1)">
       <div class="step-num">1</div>
-      <div class="step-title-group">
-        <span class="step-title">Install Node.js</span>
-      </div>
+      <div class="step-title-group"><span class="step-title">Install Node.js</span></div>
       <div class="step-check" id="check-1">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">Node.js is the runtime that powers the chat app and MCP server. Download and run the Windows installer — click "Next" through the defaults.</p>
-      <a class="download-btn" href="https://nodejs.org/en/download" target="_blank">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        Download Node.js (nodejs.org)
-      </a>
-      <div class="note"><strong>Version required: 18 or newer.</strong> On the download page, pick the <strong>LTS</strong> version — it's the default.</div>
-      <p class="step-desc" style="margin-bottom:12px;">After installation, open <strong>Command Prompt</strong> and verify:</p>
-      <div class="cmd-block">
-        <span class="cmd-text">node --version</span>
-        <button class="copy-btn" onclick="copy(this, 'node --version')">Copy</button>
+      <p class="step-desc">Node.js 18 or newer is required to run the chat app and MCP server.</p>
+
+      <div class="os-win">
+        <a class="download-btn" href="https://nodejs.org/en/download" target="_blank">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download Node.js installer (nodejs.org)
+        </a>
+        <div class="note">Pick the <strong>LTS</strong> version and click through the installer defaults.</div>
+        <p class="step-desc" style="margin-bottom:12px;">After installing, open <strong>Command Prompt</strong> and verify:</p>
+        <div class="cmd-block"><span class="cmd-text">node --version</span><button class="copy-btn" onclick="copy(this,'node --version')">Copy</button></div>
       </div>
-      <div class="note">You should see something like <strong>v22.0.0</strong>. Any v18+ is fine.</div>
+
+      <div class="os-mac">
+        <p class="step-desc" style="margin-bottom:12px;">The easiest way is via Homebrew. If you don't have Homebrew, install it first:</p>
+        <div class="cmd-block"><span class="cmd-text">/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</span><button class="copy-btn" onclick="copy(this,'/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"')">Copy</button></div>
+        <p class="step-desc" style="margin-bottom:12px;">Then install Node.js:</p>
+        <div class="cmd-block"><span class="cmd-text">brew install node</span><button class="copy-btn" onclick="copy(this,'brew install node')">Copy</button></div>
+        <p class="step-desc" style="margin-bottom:12px;">Or download the macOS installer directly:</p>
+        <a class="download-btn secondary" href="https://nodejs.org/en/download" target="_blank">Download Node.js .pkg installer</a>
+        <p class="step-desc" style="margin-bottom:12px;">Verify in Terminal:</p>
+        <div class="cmd-block"><span class="cmd-text">node --version</span><button class="copy-btn" onclick="copy(this,'node --version')">Copy</button></div>
+      </div>
+
+      <div class="os-linux">
+        <p class="step-desc" style="margin-bottom:12px;">Install via your package manager. Ubuntu / Debian:</p>
+        <div class="cmd-block"><span class="cmd-text">curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs</span><button class="copy-btn" onclick="copy(this,'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs')">Copy</button></div>
+        <p class="step-desc" style="margin-bottom:12px;">Fedora / RHEL:</p>
+        <div class="cmd-block"><span class="cmd-text">sudo dnf install nodejs</span><button class="copy-btn" onclick="copy(this,'sudo dnf install nodejs')">Copy</button></div>
+        <p class="step-desc" style="margin-bottom:12px;">Verify:</p>
+        <div class="cmd-block"><span class="cmd-text">node --version</span><button class="copy-btn" onclick="copy(this,'node --version')">Copy</button></div>
+      </div>
+
+      <div class="note">You should see <strong>v18.x</strong> or higher. If it shows an older version, upgrade before continuing.</div>
       <button class="mark-done-btn" onclick="markDone(1)">✓  Node.js is installed</button>
     </div>
   </div>
 
-  <!-- Step 2: Ollama (auto-detected) -->
+  <!-- ── Step 2: Ollama ── -->
   <div class="step" id="step-2">
     <div class="step-header" onclick="toggle(2)">
       <div class="step-num">2</div>
@@ -296,17 +216,36 @@
       <div class="step-check" id="check-2">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">Ollama is the local AI runtime. It runs the language model on your machine — no cloud, no API key. Download and run the Windows installer.</p>
-      <a class="download-btn" href="https://ollama.com/download/windows" target="_blank">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        Download Ollama for Windows
-      </a>
-      <div class="note warn"><strong>RAM required: ~2 GB free.</strong> The model itself is about 2 GB and loads into memory when you first chat. On a 16 GB machine this works fine.</div>
+      <p class="step-desc">Ollama runs the AI model locally — no cloud, no API key needed.</p>
+
+      <div class="os-win">
+        <a class="download-btn" href="https://ollama.com/download/windows" target="_blank">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download Ollama for Windows
+        </a>
+        <div class="note">Run the installer and wait for it to complete. Ollama will start automatically.</div>
+      </div>
+
+      <div class="os-mac">
+        <a class="download-btn" href="https://ollama.com/download/mac" target="_blank">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download Ollama for macOS
+        </a>
+        <div class="note">Open the downloaded <strong>.dmg</strong>, drag Ollama to Applications, then launch it. It will appear in your menu bar.</div>
+      </div>
+
+      <div class="os-linux">
+        <p class="step-desc" style="margin-bottom:12px;">Install with the official script:</p>
+        <div class="cmd-block"><span class="cmd-text">curl -fsSL https://ollama.com/install.sh | sh</span><button class="copy-btn" onclick="copy(this,'curl -fsSL https://ollama.com/install.sh | sh')">Copy</button></div>
+        <div class="note">This installs Ollama as a systemd service that starts automatically.</div>
+      </div>
+
+      <div class="note warn"><strong>RAM required: ~2 GB free.</strong> The model loads into memory on first chat. Fine on 16 GB machines.</div>
       <button class="mark-done-btn" onclick="markDone(2)">✓  Ollama is installed</button>
     </div>
   </div>
 
-  <!-- Step 3: Pull model (auto-detected) -->
+  <!-- ── Step 3: Pull model ── -->
   <div class="step" id="step-3">
     <div class="step-header" onclick="toggle(3)">
       <div class="step-num">3</div>
@@ -317,26 +256,19 @@
       <div class="step-check" id="check-3">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">Open <strong>Command Prompt</strong> and run the command below. It downloads the model — this only needs to happen once.</p>
-      <div class="cmd-block">
-        <span class="cmd-text">ollama pull qwen2.5:3b</span>
-        <button class="copy-btn" onclick="copy(this, 'ollama pull qwen2.5:3b')">Copy</button>
-      </div>
-      <div class="note">This will show a progress bar and take a few minutes. Wait until you see <strong>"success"</strong> before continuing.</div>
-      <div class="note" id="ollama-hint" style="display:none">
-        <strong>Ollama is running</strong> — but the model isn't pulled yet. Run the command above in a terminal.
-      </div>
+      <p class="step-desc">Open a terminal and run the command below. This downloads the model once — no repeats needed.</p>
+      <div class="cmd-block"><span class="cmd-text">ollama pull qwen2.5:3b</span><button class="copy-btn" onclick="copy(this,'ollama pull qwen2.5:3b')">Copy</button></div>
+      <div class="note">A progress bar will appear. Wait for <strong>"success"</strong> before continuing.</div>
+      <div class="note" id="ollama-hint" style="display:none"><strong>Ollama is running</strong> — but the model isn't pulled yet. Run the command above in a terminal.</div>
       <button class="mark-done-btn" onclick="markDone(3)">✓  Model downloaded</button>
     </div>
   </div>
 
-  <!-- Step 4: .env (manual) -->
+  <!-- ── Step 4: .env ── -->
   <div class="step" id="step-4">
     <div class="step-header" onclick="toggle(4)">
       <div class="step-num">4</div>
-      <div class="step-title-group">
-        <span class="step-title">Add your Freshdesk credentials</span>
-      </div>
+      <div class="step-title-group"><span class="step-title">Add your Freshdesk credentials</span></div>
       <div class="step-check" id="check-4">✓</div>
     </div>
     <div class="step-body">
@@ -348,32 +280,45 @@
         </div>
         <div class="env-row">
           <div class="env-key">FRESHDESK_API_KEY</div>
-          <div class="env-hint">Your personal API key. In Freshdesk: click your avatar (top right) → <strong>Profile Settings</strong> → scroll to <strong>Your API Key</strong>.</div>
+          <div class="env-hint">In Freshdesk: click your avatar (top right) → <strong>Profile Settings</strong> → scroll to <strong>Your API Key</strong>.</div>
         </div>
       </div>
-      <div class="note warn"><strong>Keep .env private.</strong> It contains your API key. Don't share it or commit it to git.</div>
+      <div class="note warn"><strong>Keep .env private.</strong> It contains your API key — don't share it.</div>
       <button class="mark-done-btn" onclick="markDone(4)">✓  .env is filled in</button>
     </div>
   </div>
 
-  <!-- Step 5: setup.bat (manual) -->
+  <!-- ── Step 5: Setup script ── -->
   <div class="step" id="step-5">
     <div class="step-header" onclick="toggle(5)">
       <div class="step-num">5</div>
-      <div class="step-title-group">
-        <span class="step-title">Run setup (one time only)</span>
-      </div>
+      <div class="step-title-group"><span class="step-title">Run setup (one time only)</span></div>
       <div class="step-check" id="check-5">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">Double-click <strong>setup.bat</strong> in the folder. It installs the app's dependencies. A terminal window will open, show progress, and close with a "Setup complete!" message.</p>
-      <div class="note">If you see a Windows SmartScreen warning, click <strong>"More info"</strong> then <strong>"Run anyway"</strong>. This is normal for unsigned scripts.</div>
-      <div class="note warn"><strong>You only need to do this once.</strong> Skip this step on future launches — go straight to Step 6.</div>
+
+      <div class="os-win">
+        <p class="step-desc">Double-click <strong>setup.bat</strong> in the folder. A terminal will open, install dependencies, and show "Setup complete!"</p>
+        <div class="note">If Windows SmartScreen warns you, click <strong>"More info"</strong> → <strong>"Run anyway"</strong>.</div>
+      </div>
+
+      <div class="os-mac">
+        <p class="step-desc">Open Terminal, navigate to the app folder, and run:</p>
+        <div class="cmd-block"><span class="cmd-text">bash setup.sh</span><button class="copy-btn" onclick="copy(this,'bash setup.sh')">Copy</button></div>
+        <div class="note">If you get a permission error, run <span style="color:#7dd3fc;font-family:monospace">chmod +x setup.sh</span> first, then try again.</div>
+      </div>
+
+      <div class="os-linux">
+        <p class="step-desc">Open a terminal in the app folder and run:</p>
+        <div class="cmd-block"><span class="cmd-text">bash setup.sh</span><button class="copy-btn" onclick="copy(this,'bash setup.sh')">Copy</button></div>
+      </div>
+
+      <div class="note warn"><strong>One time only.</strong> You won't need to do this again on future launches.</div>
       <button class="mark-done-btn" onclick="markDone(5)">✓  Setup complete</button>
     </div>
   </div>
 
-  <!-- Step 6: Launch (auto-detected) -->
+  <!-- ── Step 6: Launch ── -->
   <div class="step" id="step-6">
     <div class="step-header" onclick="toggle(6)">
       <div class="step-num">6</div>
@@ -384,20 +329,29 @@
       <div class="step-check" id="check-6">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">Double-click <strong>start.bat</strong>. It starts Ollama (if not already running) and launches the chat app. Keep the terminal window open while you use the app.</p>
-      <div class="cmd-block" style="margin-bottom:16px;">
-        <span class="cmd-text">http://localhost:3000</span>
-        <button class="copy-btn" onclick="copy(this, 'http://localhost:3000')">Copy</button>
+
+      <div class="os-win">
+        <p class="step-desc">Double-click <strong>start.bat</strong>. Keep the terminal window open while using the app.</p>
       </div>
+      <div class="os-mac">
+        <p class="step-desc">In Terminal, run:</p>
+        <div class="cmd-block"><span class="cmd-text">bash start.sh</span><button class="copy-btn" onclick="copy(this,'bash start.sh')">Copy</button></div>
+      </div>
+      <div class="os-linux">
+        <p class="step-desc">In a terminal, run:</p>
+        <div class="cmd-block"><span class="cmd-text">bash start.sh</span><button class="copy-btn" onclick="copy(this,'bash start.sh')">Copy</button></div>
+      </div>
+
+      <div class="cmd-block" style="margin-bottom:16px;"><span class="cmd-text">http://localhost:3000</span><button class="copy-btn" onclick="copy(this,'http://localhost:3000')">Copy</button></div>
       <a class="launch-btn" href="http://localhost:3000" target="_blank">Open Freshdesk Chat →</a>
-      <div class="note" style="margin-top:16px;"><strong>Daily use:</strong> from now on, just double-click <strong>start.bat</strong> and open <strong>http://localhost:3000</strong>. No other steps needed.</div>
+      <div class="note" style="margin-top:16px;"><strong>Daily use:</strong> just run the start script and open <strong>http://localhost:3000</strong>. No other steps needed.</div>
       <button class="mark-done-btn" onclick="markDone(6)">✓  App is running</button>
     </div>
   </div>
 
   <div class="all-done" id="allDone">
     <h2>You're all set!</h2>
-    <p>The Freshdesk Chat app is installed and running.<br>Bookmark <strong>http://localhost:3000</strong> for daily use.</p>
+    <p>Freshdesk Chat is installed and running.<br>Bookmark <strong>http://localhost:3000</strong> for daily use.</p>
     <a class="launch-btn" href="http://localhost:3000" target="_blank">Open Freshdesk Chat →</a>
   </div>
 
@@ -407,7 +361,28 @@
 <script>
   const TOTAL = 6;
   const STORAGE_KEY = 'fd_wizard_done';
-  const AUTO_STEPS = new Set([2, 3, 6]);
+  const OS_KEY = 'fd_wizard_os';
+
+  // ── OS detection & switching ──────────────────────────────────────────────
+
+  function detectOS() {
+    const saved = localStorage.getItem(OS_KEY);
+    if (saved) return saved;
+    const p = navigator.userAgent;
+    if (p.includes('Win'))  return 'windows';
+    if (p.includes('Mac'))  return 'mac';
+    return 'linux';
+  }
+
+  function setOS(os) {
+    localStorage.setItem(OS_KEY, os);
+    document.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('os-btn-' + os).classList.add('active');
+    document.querySelectorAll('.os-win, .os-mac, .os-linux').forEach(el => { el.style.display = 'none'; });
+    document.querySelectorAll('.os-' + os).forEach(el => { el.style.display = 'block'; });
+  }
+
+  // ── Progress ──────────────────────────────────────────────────────────────
 
   function getDone() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
@@ -445,8 +420,7 @@
         body.style.display = 'none';
       }
     }
-    const pct = (done.length / TOTAL) * 100;
-    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressFill').style.width = (getDone().length / TOTAL * 100) + '%';
     document.getElementById('allDone').style.display = done.length === TOTAL ? 'block' : 'none';
   }
 
@@ -460,8 +434,7 @@
       }
     }
     const body = document.querySelector('#step-' + num + ' .step-body');
-    const isOpen = body.style.display === 'block';
-    if (!isOpen) {
+    if (body.style.display !== 'block') {
       body.style.display = 'block';
       document.getElementById('step-' + num).classList.add('active');
     }
@@ -491,15 +464,15 @@
     }
   }
 
-  // ── Auto-detection ──────────────────────────────────────────────────────────
+  // ── Auto-detection ────────────────────────────────────────────────────────
 
   async function checkOllama() {
     try {
       const r = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
       if (!r.ok) return { running: false, model: false };
       const d = await r.json();
-      const models = (d.models || []).map(m => m.name);
-      return { running: true, model: models.some(n => n === 'qwen2.5:3b' || n.startsWith('qwen2.5:3b:')) };
+      const names = (d.models || []).map(m => m.name);
+      return { running: true, model: names.some(n => n === 'qwen2.5:3b' || n.startsWith('qwen2.5:3b:')) };
     } catch { return { running: false, model: false }; }
   }
 
@@ -515,40 +488,31 @@
 
     if (!done.includes(2) || !done.includes(3)) {
       const { running, model } = await checkOllama();
-
       if (!done.includes(2)) {
-        if (running) {
-          setBadge(2, 'detected', 'Detected ✓');
-          markDone(2);
-        } else {
-          setBadge(2, 'not-found', 'Not running');
-        }
+        setBadge(2, running ? 'detected' : 'not-found', running ? 'Detected ✓' : 'Not running');
+        if (running) markDone(2);
       }
-
       if (!done.includes(3)) {
         if (model) {
           setBadge(3, 'detected', 'Detected ✓');
           markDone(3);
-        } else if (running) {
-          setBadge(3, 'not-found', 'Not pulled yet');
-          document.getElementById('ollama-hint').style.display = 'block';
         } else {
-          setBadge(3, 'not-found', 'Waiting for Ollama');
+          setBadge(3, 'not-found', running ? 'Not pulled yet' : 'Waiting for Ollama');
+          if (running) document.getElementById('ollama-hint').style.display = 'block';
         }
       }
     }
 
     if (!done.includes(6)) {
       const appRunning = await checkApp();
-      if (appRunning) {
-        setBadge(6, 'detected', 'Running ✓');
-        markDone(6);
-      } else {
-        setBadge(6, 'not-found', 'Not started');
-      }
+      setBadge(6, appRunning ? 'detected' : 'not-found', appRunning ? 'Running ✓' : 'Not started');
+      if (appRunning) markDone(6);
     }
   }
 
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  setOS(detectOS());
   renderAll();
   runDetection();
   setInterval(runDetection, 4000);
