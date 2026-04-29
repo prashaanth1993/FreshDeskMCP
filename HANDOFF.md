@@ -16,7 +16,7 @@ A Windows-packaged chat application for Freshdesk support agents. A local LLM (q
 
 **Git repo:** `/Users/prasha-3336/freshdesk-mcp/`  
 **Branch:** `master`  
-**Last commit:** `d9f274e`
+**Last commit:** `23f8ae3`
 
 ### Completed Tasks ✅
 
@@ -26,15 +26,15 @@ A Windows-packaged chat application for Freshdesk support agents. A local LLM (q
 | 2 | `freshdesk-oas.yaml` — 9 read-only Freshdesk endpoints | `8623239` |
 | 3 | `mcp-server/tools.js` + 12 unit tests (all passing) | `be3525a` |
 | 4 | `mcp-server/index.js` — MCP stdio server with 10 tools | `d9f274e` |
+| 5 | `chat-app/server.js` — Express + MCP client + Ollama agentic loop | (Task 5 commit) |
+| 6 | `chat-app/public/index.html` — Single-file chat UI | (Task 6 commit) |
+| 7 | `setup.bat` + `start.bat` — Windows batch files (fixed `/dev/null` → `nul`) | `23f8ae3` |
 
 ### Remaining Tasks ⏳
 
-| Task | What To Build | File |
-|------|--------------|------|
-| 5 | Chat app backend (Express + MCP client + Ollama agentic loop) | `chat-app/server.js` |
-| 6 | Chat UI (model selector, message thread, tool pills, copy-draft button) | `chat-app/public/index.html` |
-| 7 | Windows batch files | `setup.bat`, `start.bat` |
-| 8 | End-to-end smoke test + zip packaging | manual |
+| Task | What To Build |
+|------|--------------|
+| 8 | End-to-end smoke test (requires real Freshdesk creds + Ollama) + zip packaging |
 
 ---
 
@@ -45,6 +45,8 @@ freshdesk-mcp/
 ├── .env.example            ← copy to .env, fill in credentials
 ├── .env                    ← NOT committed (gitignored) — needs real values
 ├── freshdesk-oas.yaml      ← OAS source of truth (edit to add new Freshdesk APIs)
+├── setup.bat               ← Windows one-time setup ✅
+├── start.bat               ← Windows daily start ✅
 ├── mcp-server/
 │   ├── package.json
 │   ├── index.js            ← MCP stdio server entry point ✅
@@ -53,22 +55,14 @@ freshdesk-mcp/
 │       └── tools.test.js   ← 12 unit tests (node:test) ✅
 └── chat-app/
     ├── package.json
-    ├── server.js           ← NOT YET CREATED
+    ├── server.js           ← Express + agentic loop ✅
     └── public/
-        └── index.html      ← NOT YET CREATED
+        └── index.html      ← Single-file chat UI ✅
 ```
 
 ---
 
-## How to Resume Building
-
-### Prerequisites
-- Node.js 18+ installed
-- Ollama installed with `qwen2.5:3b` pulled
-- `.env` file at `freshdesk-mcp/.env` (copy from `.env.example`, fill in real values)
-
-### Resume command
-Open this conversation and continue from where we left off. The subagent-driven-development process was running. Next task to dispatch: **Task 5** (chat-app/server.js).
+## How to Test
 
 ### Quick verification that existing code still works
 ```bash
@@ -80,43 +74,26 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | node index.j
 # Expected: JSON with 10 tools
 ```
 
----
-
-## Task 5 — What Needs to Be Built Next
-
-**File:** `freshdesk-mcp/chat-app/server.js`
-
-```javascript
-// Express server (port 3000) that:
-// 1. Spawns mcp-server/index.js as a child process (stdio)
-// 2. Connects to it as MCP client using @modelcontextprotocol/sdk Client
-// 3. Lists MCP tools on startup, converts to Ollama tool format
-// 4. GET /api/models  → lists Ollama models from http://localhost:11434/api/tags
-// 5. GET /api/tools   → returns list of MCP tool names + descriptions
-// 6. POST /api/chat   → agentic loop:
-//    a. Send messages + tools to Ollama /api/chat (non-streaming)
-//    b. If response has tool_calls, execute each via mcpClient.callTool()
-//    c. Append tool results to history as { role: 'tool', content: result }
-//    d. Loop back (max 10 rounds), return final text + toolLog to frontend
-```
-
-Full code is in the implementation plan at `docs/superpowers/plans/2026-04-29-freshdesk-mcp-chat.md` → Task 5.
+### Full end-to-end test (needs real credentials)
+1. Copy `.env.example` → `.env`, fill in `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY`
+2. Install Ollama + pull `qwen2.5:3b`
+3. Run `node chat-app/server.js`
+4. Open `http://localhost:3000`
+5. Send: "Show me ticket 1" — LLM should call `get_ticket` and return formatted result
 
 ---
 
-## Task 6 — Chat UI Key Points
+## Task 8 — What's Left
 
-**File:** `freshdesk-mcp/chat-app/public/index.html`
-
-- Single HTML file, no build step
-- Dark sidebar: model dropdown + tool chip list
-- Chat thread: user bubbles right, assistant bubbles left
-- Tool call pills shown under each assistant message
-- **"Copy draft" button** on every assistant message (key feature for agents)
-- All dynamic content via DOM methods — NO innerHTML with user/external data (security requirement enforced by project hook)
-- System prompt hardcoded: instructs LLM to fetch ticket → search similar → search KB → draft
-
-Full code is in the plan → Task 6.
+1. **Smoke test** with real Freshdesk credentials and Ollama running
+2. **Package as zip**: `freshdesk-mcp.zip` excluding `node_modules/`, `.env`, `.git/`
+   ```bash
+   zip -r freshdesk-mcp.zip freshdesk-mcp/ \
+     --exclude "*/node_modules/*" \
+     --exclude "*/.env" \
+     --exclude "*/.git/*"
+   ```
+3. Verify `setup.bat` and `start.bat` work correctly on a Windows machine
 
 ---
 
