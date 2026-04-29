@@ -46,7 +46,7 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: publicTools }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+  const { name, arguments: args = {} } = request.params;
   try {
     let result;
     if (name === 'web_search') {
