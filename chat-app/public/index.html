@@ -274,6 +274,9 @@
         navigator.clipboard.writeText(text).then(() => {
           copyBtn.textContent = 'Copied!';
           setTimeout(() => { copyBtn.textContent = 'Copy draft'; }, 1500);
+        }).catch(() => {
+          copyBtn.textContent = 'Copy failed';
+          setTimeout(() => { copyBtn.textContent = 'Copy draft'; }, 1500);
         });
       });
       row.appendChild(copyBtn);
@@ -348,11 +351,18 @@
     appendThinking();
 
     try {
+      const MAX_TURNS = 20;
+      const trimmedHistory = conversationHistory.length > MAX_TURNS + 1
+        ? [conversationHistory[0], ...conversationHistory.slice(-MAX_TURNS)]
+        : conversationHistory;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory, model }),
+        body: JSON.stringify({ messages: trimmedHistory, model }),
       });
+      if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
+        throw new Error(`Server error ${res.status}`);
+      }
       const data = await res.json();
       removeThinking();
 
