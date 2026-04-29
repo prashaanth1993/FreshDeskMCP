@@ -34,6 +34,7 @@ async function callMCPTool(name, args) {
 }
 
 const app = express();
+app.use((_, res, next) => { res.setHeader('Access-Control-Allow-Origin', '*'); next(); });
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 

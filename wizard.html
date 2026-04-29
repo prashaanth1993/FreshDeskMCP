@@ -72,18 +72,39 @@
   .step.done .step-num { background: #166534; color: #4ade80; }
   .step.active .step-num { background: #3730a3; color: #a5b4fc; }
 
-  .step-title {
-    flex: 1;
-    font-weight: 600;
-    font-size: 1rem;
-    color: #cbd5e1;
-  }
+  .step-title-group { flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .step-title { font-weight: 600; font-size: 1rem; color: #cbd5e1; }
   .step.done .step-title { color: #4ade80; }
   .step.active .step-title { color: #a5b4fc; }
 
+  .detect-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .detect-badge.checking  { background: #1e2533; color: #64748b; }
+  .detect-badge.detected  { background: #14532d; color: #4ade80; }
+  .detect-badge.not-found { background: #1e2533; color: #475569; }
+
+  .detect-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .checking  .detect-dot { background: #475569; animation: pulse 1.5s ease-in-out infinite; }
+  .detected  .detect-dot { background: #4ade80; }
+  .not-found .detect-dot { background: #475569; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
   .step-check {
-    width: 22px;
-    height: 22px;
+    width: 22px; height: 22px;
     border-radius: 50%;
     border: 2px solid #4b5563;
     display: flex;
@@ -95,18 +116,10 @@
   }
   .step.done .step-check { background: #166534; border-color: #4ade80; color: #4ade80; }
 
-  .step-body {
-    padding: 0 24px 24px;
-    display: none;
-  }
+  .step-body { padding: 0 24px 24px; display: none; }
   .step.active .step-body { display: block; }
 
-  .step-desc {
-    color: #94a3b8;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    margin-bottom: 20px;
-  }
+  .step-desc { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
 
   .download-btn {
     display: inline-flex;
@@ -123,7 +136,6 @@
     transition: background 0.15s;
   }
   .download-btn:hover { background: #4f46e5; }
-  .download-btn svg { flex-shrink: 0; }
 
   .cmd-block {
     background: #0d1117;
@@ -185,7 +197,6 @@
     margin-bottom: 4px;
   }
   .env-hint { font-size: 0.82rem; color: #64748b; line-height: 1.4; }
-  .env-hint a { color: #818cf8; }
 
   .mark-done-btn {
     display: inline-flex;
@@ -222,11 +233,7 @@
   }
   .launch-btn:hover { background: #4f46e5; }
 
-  .all-done {
-    text-align: center;
-    padding: 40px 24px;
-    display: none;
-  }
+  .all-done { text-align: center; padding: 40px 24px; display: none; }
   .all-done h2 { font-size: 1.5rem; color: #4ade80; margin-bottom: 12px; }
   .all-done p { color: #94a3b8; margin-bottom: 24px; }
 
@@ -252,245 +259,208 @@
 
   <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 
-  <!-- Step 1: Node.js -->
+  <!-- Step 1: Node.js (manual) -->
   <div class="step" id="step-1">
     <div class="step-header" onclick="toggle(1)">
       <div class="step-num">1</div>
-      <div class="step-title">Install Node.js</div>
+      <div class="step-title-group">
+        <span class="step-title">Install Node.js</span>
+      </div>
       <div class="step-check" id="check-1">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">
-        Node.js is the runtime that powers the chat app and MCP server.
-        Download and run the Windows installer — click "Next" through the defaults.
-      </p>
+      <p class="step-desc">Node.js is the runtime that powers the chat app and MCP server. Download and run the Windows installer — click "Next" through the defaults.</p>
       <a class="download-btn" href="https://nodejs.org/en/download" target="_blank">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         Download Node.js (nodejs.org)
       </a>
-      <div class="note">
-        <strong>Version required: 18 or newer.</strong>
-        On the download page, pick the <strong>LTS</strong> version — it's the default.
-      </div>
-      <p class="step-desc" style="margin-bottom:12px;">
-        After installation, open <strong>Command Prompt</strong> (press Windows key, type <code style="color:#7dd3fc">cmd</code>, press Enter) and run:
-      </p>
+      <div class="note"><strong>Version required: 18 or newer.</strong> On the download page, pick the <strong>LTS</strong> version — it's the default.</div>
+      <p class="step-desc" style="margin-bottom:12px;">After installation, open <strong>Command Prompt</strong> and verify:</p>
       <div class="cmd-block">
         <span class="cmd-text">node --version</span>
         <button class="copy-btn" onclick="copy(this, 'node --version')">Copy</button>
       </div>
       <div class="note">You should see something like <strong>v22.0.0</strong>. Any v18+ is fine.</div>
-      <button class="mark-done-btn" onclick="markDone(1)">✓ &nbsp;Node.js is installed</button>
+      <button class="mark-done-btn" onclick="markDone(1)">✓  Node.js is installed</button>
     </div>
   </div>
 
-  <!-- Step 2: Ollama -->
+  <!-- Step 2: Ollama (auto-detected) -->
   <div class="step" id="step-2">
     <div class="step-header" onclick="toggle(2)">
       <div class="step-num">2</div>
-      <div class="step-title">Install Ollama</div>
+      <div class="step-title-group">
+        <span class="step-title">Install Ollama</span>
+        <span class="detect-badge checking" id="badge-2"><span class="detect-dot"></span><span id="badge-2-text">Checking…</span></span>
+      </div>
       <div class="step-check" id="check-2">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">
-        Ollama is the local AI runtime. It runs the language model on your machine — no cloud, no API key.
-        Download and run the Windows installer.
-      </p>
+      <p class="step-desc">Ollama is the local AI runtime. It runs the language model on your machine — no cloud, no API key. Download and run the Windows installer.</p>
       <a class="download-btn" href="https://ollama.com/download/windows" target="_blank">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         Download Ollama for Windows
       </a>
-      <div class="note warn">
-        <strong>RAM required: ~2 GB free.</strong>
-        The model itself is about 2 GB and loads into memory when you first chat.
-        On a 16 GB machine this works fine.
-      </div>
-      <button class="mark-done-btn" onclick="markDone(2)">✓ &nbsp;Ollama is installed</button>
+      <div class="note warn"><strong>RAM required: ~2 GB free.</strong> The model itself is about 2 GB and loads into memory when you first chat. On a 16 GB machine this works fine.</div>
+      <button class="mark-done-btn" onclick="markDone(2)">✓  Ollama is installed</button>
     </div>
   </div>
 
-  <!-- Step 3: Pull model -->
+  <!-- Step 3: Pull model (auto-detected) -->
   <div class="step" id="step-3">
     <div class="step-header" onclick="toggle(3)">
       <div class="step-num">3</div>
-      <div class="step-title">Download the AI model (~2 GB)</div>
+      <div class="step-title-group">
+        <span class="step-title">Download the AI model (~2 GB)</span>
+        <span class="detect-badge checking" id="badge-3"><span class="detect-dot"></span><span id="badge-3-text">Checking…</span></span>
+      </div>
       <div class="step-check" id="check-3">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">
-        Open <strong>Command Prompt</strong> and run the command below. It downloads the model — this only needs to happen once.
-      </p>
+      <p class="step-desc">Open <strong>Command Prompt</strong> and run the command below. It downloads the model — this only needs to happen once.</p>
       <div class="cmd-block">
         <span class="cmd-text">ollama pull qwen2.5:3b</span>
         <button class="copy-btn" onclick="copy(this, 'ollama pull qwen2.5:3b')">Copy</button>
       </div>
-      <div class="note">
-        This will show a progress bar and take a few minutes depending on your internet speed.
-        Wait until you see <strong>"success"</strong> before continuing.
+      <div class="note">This will show a progress bar and take a few minutes. Wait until you see <strong>"success"</strong> before continuing.</div>
+      <div class="note" id="ollama-hint" style="display:none">
+        <strong>Ollama is running</strong> — but the model isn't pulled yet. Run the command above in a terminal.
       </div>
-      <button class="mark-done-btn" onclick="markDone(3)">✓ &nbsp;Model downloaded</button>
+      <button class="mark-done-btn" onclick="markDone(3)">✓  Model downloaded</button>
     </div>
   </div>
 
-  <!-- Step 4: .env -->
+  <!-- Step 4: .env (manual) -->
   <div class="step" id="step-4">
     <div class="step-header" onclick="toggle(4)">
       <div class="step-num">4</div>
-      <div class="step-title">Add your Freshdesk credentials</div>
+      <div class="step-title-group">
+        <span class="step-title">Add your Freshdesk credentials</span>
+      </div>
       <div class="step-check" id="check-4">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">
-        Open the file named <strong>.env</strong> in the same folder as this page. It should already exist — if not, copy <strong>.env.example</strong> and rename it to <strong>.env</strong>.
-        Fill in two values:
-      </p>
+      <p class="step-desc">Open the file named <strong>.env</strong> in the same folder as this page. If it doesn't exist, copy <strong>.env.example</strong> and rename it to <strong>.env</strong>. Fill in two values:</p>
       <div class="env-fields">
         <div class="env-row">
           <div class="env-key">FRESHDESK_DOMAIN</div>
-          <div class="env-hint">
-            Your Freshdesk subdomain. If your helpdesk URL is <strong>acme.freshdesk.com</strong>, enter <strong>acme</strong>.
-          </div>
+          <div class="env-hint">Your Freshdesk subdomain. If your helpdesk URL is <strong>acme.freshdesk.com</strong>, enter <strong>acme</strong>.</div>
         </div>
         <div class="env-row">
           <div class="env-key">FRESHDESK_API_KEY</div>
-          <div class="env-hint">
-            Your personal API key. In Freshdesk: click your avatar (top right) →
-            <strong>Profile Settings</strong> → scroll to <strong>Your API Key</strong>.
-          </div>
+          <div class="env-hint">Your personal API key. In Freshdesk: click your avatar (top right) → <strong>Profile Settings</strong> → scroll to <strong>Your API Key</strong>.</div>
         </div>
       </div>
-      <div class="note warn">
-        <strong>Keep .env private.</strong>
-        It contains your API key. Don't share it or commit it to git.
-      </div>
-      <button class="mark-done-btn" onclick="markDone(4)">✓ &nbsp;.env is filled in</button>
+      <div class="note warn"><strong>Keep .env private.</strong> It contains your API key. Don't share it or commit it to git.</div>
+      <button class="mark-done-btn" onclick="markDone(4)">✓  .env is filled in</button>
     </div>
   </div>
 
-  <!-- Step 5: setup.bat -->
+  <!-- Step 5: setup.bat (manual) -->
   <div class="step" id="step-5">
     <div class="step-header" onclick="toggle(5)">
       <div class="step-num">5</div>
-      <div class="step-title">Run setup (one time only)</div>
+      <div class="step-title-group">
+        <span class="step-title">Run setup (one time only)</span>
+      </div>
       <div class="step-check" id="check-5">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">
-        Double-click <strong>setup.bat</strong> in the folder. It installs the app's dependencies.
-        A terminal window will open, show progress, and close with a "Setup complete!" message.
-      </p>
-      <div class="note">
-        If you see a Windows SmartScreen warning, click <strong>"More info"</strong> then <strong>"Run anyway"</strong>.
-        This is normal for scripts that aren't signed.
-      </div>
-      <div class="note warn">
-        <strong>You only need to do this once.</strong>
-        Skip this step on future launches — go straight to Step 6.
-      </div>
-      <button class="mark-done-btn" onclick="markDone(5)">✓ &nbsp;Setup complete</button>
+      <p class="step-desc">Double-click <strong>setup.bat</strong> in the folder. It installs the app's dependencies. A terminal window will open, show progress, and close with a "Setup complete!" message.</p>
+      <div class="note">If you see a Windows SmartScreen warning, click <strong>"More info"</strong> then <strong>"Run anyway"</strong>. This is normal for unsigned scripts.</div>
+      <div class="note warn"><strong>You only need to do this once.</strong> Skip this step on future launches — go straight to Step 6.</div>
+      <button class="mark-done-btn" onclick="markDone(5)">✓  Setup complete</button>
     </div>
   </div>
 
-  <!-- Step 6: Launch -->
+  <!-- Step 6: Launch (auto-detected) -->
   <div class="step" id="step-6">
     <div class="step-header" onclick="toggle(6)">
       <div class="step-num">6</div>
-      <div class="step-title">Launch the chat app</div>
+      <div class="step-title-group">
+        <span class="step-title">Launch the chat app</span>
+        <span class="detect-badge checking" id="badge-6"><span class="detect-dot"></span><span id="badge-6-text">Checking…</span></span>
+      </div>
       <div class="step-check" id="check-6">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">
-        Double-click <strong>start.bat</strong>. It starts Ollama (if not already running) and launches the chat app.
-        A terminal window will stay open — keep it open while you use the app.
-      </p>
-      <div class="note">
-        After a few seconds, open your browser and go to:
-      </div>
+      <p class="step-desc">Double-click <strong>start.bat</strong>. It starts Ollama (if not already running) and launches the chat app. Keep the terminal window open while you use the app.</p>
       <div class="cmd-block" style="margin-bottom:16px;">
         <span class="cmd-text">http://localhost:3000</span>
         <button class="copy-btn" onclick="copy(this, 'http://localhost:3000')">Copy</button>
       </div>
-      <a class="launch-btn" href="http://localhost:3000" target="_blank">
-        Open Freshdesk Chat →
-      </a>
-      <div class="note" style="margin-top:16px;">
-        <strong>Daily use:</strong> from now on, just double-click <strong>start.bat</strong> and open
-        <strong>http://localhost:3000</strong>. No other steps needed.
-      </div>
-      <button class="mark-done-btn" onclick="markDone(6)">✓ &nbsp;App is running</button>
+      <a class="launch-btn" href="http://localhost:3000" target="_blank">Open Freshdesk Chat →</a>
+      <div class="note" style="margin-top:16px;"><strong>Daily use:</strong> from now on, just double-click <strong>start.bat</strong> and open <strong>http://localhost:3000</strong>. No other steps needed.</div>
+      <button class="mark-done-btn" onclick="markDone(6)">✓  App is running</button>
     </div>
   </div>
 
   <div class="all-done" id="allDone">
     <h2>You're all set!</h2>
-    <p>The Freshdesk Chat app is installed and running. Bookmark <strong>http://localhost:3000</strong> for daily use.</p>
+    <p>The Freshdesk Chat app is installed and running.<br>Bookmark <strong>http://localhost:3000</strong> for daily use.</p>
     <a class="launch-btn" href="http://localhost:3000" target="_blank">Open Freshdesk Chat →</a>
   </div>
 
   <span class="reset-link" onclick="resetProgress()">Reset progress</span>
 
 </div>
-
 <script>
   const TOTAL = 6;
   const STORAGE_KEY = 'fd_wizard_done';
+  const AUTO_STEPS = new Set([2, 3, 6]);
 
   function getDone() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
   }
-  function saveDone(done) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(done));
+  function saveDone(done) { localStorage.setItem(STORAGE_KEY, JSON.stringify(done)); }
+
+  function setBadge(num, state, label) {
+    const badge = document.getElementById('badge-' + num);
+    const text  = document.getElementById('badge-' + num + '-text');
+    if (!badge || !text) return;
+    badge.className = 'detect-badge ' + state;
+    text.textContent = label;
   }
 
   function renderAll() {
     const done = getDone();
     let activeSet = false;
-
     for (let i = 1; i <= TOTAL; i++) {
-      const el = document.getElementById('step-' + i);
+      const el    = document.getElementById('step-' + i);
       const check = document.getElementById('check-' + i);
+      const body  = el.querySelector('.step-body');
       const isDone = done.includes(i);
-
       el.classList.remove('done', 'active');
       check.style.display = isDone ? 'flex' : 'none';
-
       if (isDone) {
         el.classList.add('done');
-        el.querySelector('.step-body').style.display = 'none';
+        body.style.display = 'none';
+        const badge = document.getElementById('badge-' + i);
+        if (badge) badge.style.display = 'none';
       } else if (!activeSet) {
         el.classList.add('active');
-        el.querySelector('.step-body').style.display = 'block';
+        body.style.display = 'block';
         activeSet = true;
       } else {
-        el.querySelector('.step-body').style.display = 'none';
+        body.style.display = 'none';
       }
     }
-
     const pct = (done.length / TOTAL) * 100;
     document.getElementById('progressFill').style.width = pct + '%';
-
-    const allDone = document.getElementById('allDone');
-    if (done.length === TOTAL) {
-      allDone.style.display = 'block';
-    } else {
-      allDone.style.display = 'none';
-    }
+    document.getElementById('allDone').style.display = done.length === TOTAL ? 'block' : 'none';
   }
 
   function toggle(num) {
     const done = getDone();
     if (done.includes(num)) return;
-
-    const body = document.querySelector('#step-' + num + ' .step-body');
-    const isOpen = body.style.display === 'block';
-
     for (let i = 1; i <= TOTAL; i++) {
       if (!done.includes(i)) {
         document.querySelector('#step-' + i + ' .step-body').style.display = 'none';
         document.getElementById('step-' + i).classList.remove('active');
       }
     }
-
+    const body = document.querySelector('#step-' + num + ' .step-body');
+    const isOpen = body.style.display === 'block';
     if (!isOpen) {
       body.style.display = 'block';
       document.getElementById('step-' + num).classList.add('active');
@@ -499,10 +469,7 @@
 
   function markDone(num) {
     const done = getDone();
-    if (!done.includes(num)) {
-      done.push(num);
-      saveDone(done);
-    }
+    if (!done.includes(num)) { done.push(num); saveDone(done); }
     renderAll();
   }
 
@@ -524,7 +491,67 @@
     }
   }
 
+  // ── Auto-detection ──────────────────────────────────────────────────────────
+
+  async function checkOllama() {
+    try {
+      const r = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
+      if (!r.ok) return { running: false, model: false };
+      const d = await r.json();
+      const models = (d.models || []).map(m => m.name);
+      return { running: true, model: models.some(n => n === 'qwen2.5:3b' || n.startsWith('qwen2.5:3b:')) };
+    } catch { return { running: false, model: false }; }
+  }
+
+  async function checkApp() {
+    try {
+      const r = await fetch('http://localhost:3000/api/tools', { signal: AbortSignal.timeout(2000) });
+      return r.ok;
+    } catch { return false; }
+  }
+
+  async function runDetection() {
+    const done = getDone();
+
+    if (!done.includes(2) || !done.includes(3)) {
+      const { running, model } = await checkOllama();
+
+      if (!done.includes(2)) {
+        if (running) {
+          setBadge(2, 'detected', 'Detected ✓');
+          markDone(2);
+        } else {
+          setBadge(2, 'not-found', 'Not running');
+        }
+      }
+
+      if (!done.includes(3)) {
+        if (model) {
+          setBadge(3, 'detected', 'Detected ✓');
+          markDone(3);
+        } else if (running) {
+          setBadge(3, 'not-found', 'Not pulled yet');
+          document.getElementById('ollama-hint').style.display = 'block';
+        } else {
+          setBadge(3, 'not-found', 'Waiting for Ollama');
+        }
+      }
+    }
+
+    if (!done.includes(6)) {
+      const appRunning = await checkApp();
+      if (appRunning) {
+        setBadge(6, 'detected', 'Running ✓');
+        markDone(6);
+      } else {
+        setBadge(6, 'not-found', 'Not started');
+      }
+    }
+  }
+
   renderAll();
+  runDetection();
+  setInterval(runDetection, 4000);
 </script>
 </body>
 </html>
