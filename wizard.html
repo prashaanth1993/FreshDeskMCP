@@ -185,6 +185,26 @@
   .save-result { margin-top: 16px; font-size: 0.85rem; line-height: 1.5; display: none; }
   .save-result.ok   { color: #4ade80; }
   .save-result.info { color: #94a3b8; }
+
+  /* env status panel inside step 4 */
+  .env-preview {
+    background: #0d1117; border: 1px solid #2d3548; border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .env-preview .ep-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .env-preview .ep-row:last-child { margin-bottom: 0; }
+  .ep-kv { font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.85rem; }
+  .ep-key { color: #94a3b8; }
+  .ep-val { color: #7dd3fc; }
+  .ep-val.missing { color: #f87171; font-style: italic; }
+  .ep-source { font-size: 0.72rem; color: #475569; white-space: nowrap; }
+  .ep-source.live { color: #4ade80; }
+  .ep-edit {
+    background: none; border: 1px solid #2d3548; border-radius: 6px;
+    color: #6366f1; cursor: pointer; font-size: 0.78rem; padding: 3px 10px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .ep-edit:hover { background: #1e2040; border-color: #6366f1; }
 </style>
 </head>
 <body>
@@ -317,7 +337,13 @@
     </div>
     <div class="step-body">
       <p class="step-desc">Enter your Freshdesk subdomain and API key. The wizard will save them as a <strong>.env</strong> file in your app folder.</p>
-      <button class="mark-done-btn" style="margin-top:0;margin-bottom:16px;background:#1e2040;border-color:#6366f1;color:#a5b4fc;" onclick="openEnvModal()">⚙  Enter credentials &amp; save .env</button>
+      <!-- env status panel -->
+      <div id="env-status-panel" style="display:none;margin-bottom:16px;">
+        <div class="env-preview" id="env-preview"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+        <button class="mark-done-btn" style="margin-top:0;background:#1e2040;border-color:#6366f1;color:#a5b4fc;" id="btnOpenModal" onclick="openEnvModal()">⚙  Enter credentials &amp; save .env</button>
+      </div>
       <div class="note warn"><strong>Keep .env private.</strong> It contains your API key — don't share it.</div>
       <button class="mark-done-btn" onclick="markDone(4)">✓  .env is already saved</button>
     </div>
@@ -572,21 +598,111 @@
       setBadge(6, appRunning ? 'detected' : 'not-found', appRunning ? 'Running ✓' : 'Not started');
       if (appRunning) markDone(6);
     }
+
+    // When app is running, upgrade env panel to live-verified values
+    if (await checkApp()) refreshEnvFromApp();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
   setOS(detectOS());
   renderAll();
+  initEnvPanel();
   runDetection();
   setInterval(runDetection, 4000);
 
   // ── .env modal ────────────────────────────────────────────────────────────
 
+  const ENV_CACHE_KEY = 'fd_env_cache';
+
+  function maskKey(key) {
+    if (!key) return '';
+    return key.length <= 4 ? '•'.repeat(key.length) : key.slice(0, 4) + '•'.repeat(key.length - 4);
+  }
+
+  function getCachedEnv() {
+    try { return JSON.parse(localStorage.getItem(ENV_CACHE_KEY)) || null; } catch { return null; }
+  }
+
+  function setCachedEnv(domain, keyPreview) {
+    localStorage.setItem(ENV_CACHE_KEY, JSON.stringify({ domain, keyPreview }));
+  }
+
+  function renderEnvPanel(domain, keyPreview, source) {
+    const panel   = document.getElementById('env-status-panel');
+    const preview = document.getElementById('env-preview');
+    panel.style.display = 'block';
+    while (preview.firstChild) preview.removeChild(preview.firstChild);
+
+    const isLive    = source === 'live';
+    const srcLabel  = isLive ? '✓ loaded by app' : 'saved locally';
+    const hasDomain = !!domain;
+    const hasKey    = !!keyPreview;
+
+    function makeRow(k, v, missing) {
+      const row  = document.createElement('div'); row.className = 'ep-row';
+      const kv   = document.createElement('span'); kv.className = 'ep-kv';
+      const key  = document.createElement('span'); key.className = 'ep-key'; key.textContent = k + '=';
+      const val  = document.createElement('span'); val.className = 'ep-val' + (missing ? ' missing' : ''); val.textContent = missing ? 'not set' : v;
+      kv.appendChild(key); kv.appendChild(val); row.appendChild(kv);
+      return row;
+    }
+
+    const row1 = makeRow('FRESHDESK_DOMAIN',  hasDomain ? domain     : '', !hasDomain);
+    const row2 = makeRow('FRESHDESK_API_KEY', hasKey    ? keyPreview : '', !hasKey);
+
+    const srcEl = document.createElement('span');
+    srcEl.className = 'ep-source' + (isLive ? ' live' : '');
+    srcEl.textContent = srcLabel;
+    row1.appendChild(srcEl);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'ep-edit';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = openEnvModal;
+    row2.appendChild(editBtn);
+
+    preview.appendChild(row1);
+    preview.appendChild(row2);
+
+    // Update the open-modal button label
+    document.getElementById('btnOpenModal').textContent = '⚙  Edit credentials';
+  }
+
+  async function refreshEnvFromApp() {
+    try {
+      const r = await fetch('http://localhost:3000/api/env-status', { signal: AbortSignal.timeout(2000) });
+      if (!r.ok) return false;
+      const d = await r.json();
+      if (d.domain || d.keyPreview) {
+        setCachedEnv(d.domain, d.keyPreview);
+        renderEnvPanel(d.domain, d.keyPreview, 'live');
+        return true;
+      }
+    } catch { /* app not running yet */ }
+    return false;
+  }
+
+  function initEnvPanel() {
+    const cached = getCachedEnv();
+    if (cached) renderEnvPanel(cached.domain, cached.keyPreview, 'cached');
+  }
+
   function openEnvModal() {
+    // Pre-fill from cache if available
+    const cached = getCachedEnv();
+    if (cached) {
+      document.getElementById('inp-domain').value = cached.domain || '';
+      // Don't pre-fill masked key — user must re-enter to edit
+    }
     document.getElementById('envModal').classList.add('open');
     document.getElementById('saveResult').style.display = 'none';
-    document.getElementById('inp-domain').focus();
+    const domInp = document.getElementById('inp-domain');
+    domInp.classList.remove('error');
+    document.getElementById('inp-key').classList.remove('error');
+    document.getElementById('err-domain').style.display = 'none';
+    document.getElementById('err-key').style.display    = 'none';
+    domInp.focus();
   }
 
   function closeEnvModal() {
@@ -629,8 +745,9 @@
     if (!apiKey)  { keyInp.classList.add('error');   errKey.style.display    = 'block'; valid = false; }
     if (!valid) return;
 
-    const content = buildEnvContent(domain, apiKey);
-    const btn = document.getElementById('btnSave');
+    const keyPreview = maskKey(apiKey);
+    const content    = buildEnvContent(domain, apiKey);
+    const btn        = document.getElementById('btnSave');
     btn.disabled = true;
     btn.textContent = 'Saving…';
 
@@ -644,6 +761,8 @@
         const writable = await handle.createWritable();
         await writable.write(content);
         await writable.close();
+        setCachedEnv(domain, keyPreview);
+        renderEnvPanel(domain, keyPreview, 'cached');
         showSaveResult('ok', ['✓ Saved! Make sure it\'s in your freshdesk-mcp folder.']);
         btn.textContent = 'Saved ✓';
         setTimeout(() => { closeEnvModal(); markDone(4); }, 1200);
@@ -656,20 +775,20 @@
       }
     }
 
-    // Fallback: download as blob
+    // Fallback: blob download
     const blob = new Blob([content], { type: 'text/plain' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url;
-    a.download = '.env';
-    document.body.appendChild(a);
-    a.click();
+    a.href = url; a.download = '.env';
+    document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
+    setCachedEnv(domain, keyPreview);
+    renderEnvPanel(domain, keyPreview, 'cached');
     showSaveResult('info', [
       '⬇ File downloaded as .env',
-      'Move it into your freshdesk-mcp folder, then click "Mark as done" below.',
+      'Move it into your freshdesk-mcp folder, then click "✓ .env is already saved" below.',
     ]);
     btn.disabled = false;
     btn.textContent = 'Save .env';

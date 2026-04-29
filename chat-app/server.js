@@ -49,6 +49,16 @@ app.get('/api/models', async (_req, res) => {
   }
 });
 
+app.get('/api/env-status', (_req, res) => {
+  const domain = process.env.FRESHDESK_DOMAIN || '';
+  const key    = process.env.FRESHDESK_API_KEY || '';
+  res.json({
+    domain,
+    keyPreview: key ? key.slice(0, 4) + '•'.repeat(Math.max(0, key.length - 4)) : '',
+    missing: !domain || !key,
+  });
+});
+
 app.get('/api/tools', (_req, res) => {
   res.json(mcpTools.map(t => ({ name: t.function.name, description: t.function.description })));
 });
