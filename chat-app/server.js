@@ -10,7 +10,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const MCP_SERVER = join(__dirname, '..', 'mcp-server', 'index.js');
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 let mcpClient;
 let mcpTools = [];
@@ -54,7 +54,9 @@ app.get('/api/tools', (_req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   const { messages, model } = req.body;
-  if (!messages || !model) return res.status(400).json({ error: 'messages and model required' });
+  if (!Array.isArray(messages) || messages.length === 0 || typeof model !== 'string' || !model.trim()) {
+    return res.status(400).json({ error: 'messages must be a non-empty array and model must be a non-empty string' });
+  }
 
   const history = [...messages];
   const toolLog = [];
@@ -74,6 +76,7 @@ app.post('/api/chat', async (req, res) => {
 
       const data = await ollamaRes.json();
       const msg = data.message;
+      if (!msg) throw new Error(`Unexpected Ollama response: ${JSON.stringify(data)}`);
       history.push(msg);
 
       if (!msg.tool_calls || msg.tool_calls.length === 0) {
