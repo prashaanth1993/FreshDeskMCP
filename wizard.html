@@ -141,6 +141,50 @@
 
   .reset-link { display: block; text-align: center; color: #475569; font-size: 0.8rem; margin-top: 48px; cursor: pointer; text-decoration: underline; }
   .reset-link:hover { color: #64748b; }
+
+  /* .env modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: #1a1f2e; border: 1px solid #2d3548; border-radius: 16px;
+    width: 100%; max-width: 520px; padding: 32px;
+  }
+  .modal h2 { font-size: 1.2rem; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
+  .modal .modal-sub { color: #64748b; font-size: 0.85rem; margin-bottom: 24px; }
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .field .field-hint { font-size: 0.8rem; color: #475569; margin-bottom: 8px; line-height: 1.4; }
+  .field input {
+    width: 100%; background: #0d1117; border: 1px solid #2d3548; border-radius: 8px;
+    color: #e2e8f0; font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.9rem;
+    padding: 10px 14px; outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus { border-color: #6366f1; }
+  .field input.error { border-color: #ef4444; }
+  .field-err { color: #f87171; font-size: 0.8rem; margin-top: 4px; display: none; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+  .btn-save {
+    flex: 1; background: #6366f1; border: none; border-radius: 8px;
+    color: #fff; cursor: pointer; font-size: 0.95rem; font-weight: 700;
+    padding: 11px; transition: background 0.15s;
+  }
+  .btn-save:hover { background: #4f46e5; }
+  .btn-save:disabled { background: #374151; color: #6b7280; cursor: default; }
+  .btn-cancel {
+    background: #1e2533; border: 1px solid #2d3548; border-radius: 8px;
+    color: #94a3b8; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    padding: 11px 20px; transition: background 0.15s;
+  }
+  .btn-cancel:hover { background: #2d3548; }
+  .save-result { margin-top: 16px; font-size: 0.85rem; line-height: 1.5; display: none; }
+  .save-result.ok   { color: #4ade80; }
+  .save-result.info { color: #94a3b8; }
 </style>
 </head>
 <body>
@@ -272,19 +316,10 @@
       <div class="step-check" id="check-4">✓</div>
     </div>
     <div class="step-body">
-      <p class="step-desc">Open the file named <strong>.env</strong> in the same folder as this page. If it doesn't exist, copy <strong>.env.example</strong> and rename it to <strong>.env</strong>. Fill in two values:</p>
-      <div class="env-fields">
-        <div class="env-row">
-          <div class="env-key">FRESHDESK_DOMAIN</div>
-          <div class="env-hint">Your Freshdesk subdomain. If your helpdesk URL is <strong>acme.freshdesk.com</strong>, enter <strong>acme</strong>.</div>
-        </div>
-        <div class="env-row">
-          <div class="env-key">FRESHDESK_API_KEY</div>
-          <div class="env-hint">In Freshdesk: click your avatar (top right) → <strong>Profile Settings</strong> → scroll to <strong>Your API Key</strong>.</div>
-        </div>
-      </div>
+      <p class="step-desc">Enter your Freshdesk subdomain and API key. The wizard will save them as a <strong>.env</strong> file in your app folder.</p>
+      <button class="mark-done-btn" style="margin-top:0;margin-bottom:16px;background:#1e2040;border-color:#6366f1;color:#a5b4fc;" onclick="openEnvModal()">⚙  Enter credentials &amp; save .env</button>
       <div class="note warn"><strong>Keep .env private.</strong> It contains your API key — don't share it.</div>
-      <button class="mark-done-btn" onclick="markDone(4)">✓  .env is filled in</button>
+      <button class="mark-done-btn" onclick="markDone(4)">✓  .env is already saved</button>
     </div>
   </div>
 
@@ -357,6 +392,35 @@
 
   <span class="reset-link" onclick="resetProgress()">Reset progress</span>
 
+</div>
+
+<!-- .env modal -->
+<div class="modal-overlay" id="envModal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <h2>Freshdesk Credentials</h2>
+    <p class="modal-sub">These will be saved as a .env file in the app folder.</p>
+
+    <div class="field">
+      <label>Freshdesk Domain</label>
+      <div class="field-hint">Your subdomain only — if your URL is <strong>acme.freshdesk.com</strong>, enter <strong>acme</strong>.</div>
+      <input type="text" id="inp-domain" placeholder="acme" autocomplete="off" spellcheck="false">
+      <div class="field-err" id="err-domain">Please enter your subdomain.</div>
+    </div>
+
+    <div class="field">
+      <label>API Key</label>
+      <div class="field-hint">In Freshdesk: avatar (top right) → Profile Settings → Your API Key.</div>
+      <input type="password" id="inp-key" placeholder="••••••••••••••••" autocomplete="off" spellcheck="false">
+      <div class="field-err" id="err-key">Please enter your API key.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-save" id="btnSave" onclick="saveEnv()">Save .env</button>
+      <button class="btn-cancel" onclick="closeEnvModal()">Cancel</button>
+    </div>
+
+    <div class="save-result" id="saveResult"></div>
+  </div>
 </div>
 <script>
   const TOTAL = 6;
@@ -516,6 +580,100 @@
   renderAll();
   runDetection();
   setInterval(runDetection, 4000);
+
+  // ── .env modal ────────────────────────────────────────────────────────────
+
+  function openEnvModal() {
+    document.getElementById('envModal').classList.add('open');
+    document.getElementById('saveResult').style.display = 'none';
+    document.getElementById('inp-domain').focus();
+  }
+
+  function closeEnvModal() {
+    document.getElementById('envModal').classList.remove('open');
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('envModal')) closeEnvModal();
+  }
+
+  function buildEnvContent(domain, apiKey) {
+    return 'FRESHDESK_DOMAIN=' + domain + '\nFRESHDESK_API_KEY=' + apiKey + '\n';
+  }
+
+  function showSaveResult(type, lines) {
+    const el = document.getElementById('saveResult');
+    el.className = 'save-result ' + type;
+    el.style.display = 'block';
+    while (el.firstChild) el.removeChild(el.firstChild);
+    lines.forEach((line, i) => {
+      el.appendChild(document.createTextNode(line));
+      if (i < lines.length - 1) el.appendChild(document.createElement('br'));
+    });
+  }
+
+  async function saveEnv() {
+    const domain = document.getElementById('inp-domain').value.trim();
+    const apiKey = document.getElementById('inp-key').value.trim();
+    let valid = true;
+
+    const domainInp = document.getElementById('inp-domain');
+    const keyInp    = document.getElementById('inp-key');
+    const errDomain = document.getElementById('err-domain');
+    const errKey    = document.getElementById('err-key');
+
+    domainInp.classList.remove('error'); errDomain.style.display = 'none';
+    keyInp.classList.remove('error');    errKey.style.display    = 'none';
+
+    if (!domain) { domainInp.classList.add('error'); errDomain.style.display = 'block'; valid = false; }
+    if (!apiKey)  { keyInp.classList.add('error');   errKey.style.display    = 'block'; valid = false; }
+    if (!valid) return;
+
+    const content = buildEnvContent(domain, apiKey);
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    // Try File System Access API (Chrome/Edge 86+)
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: '.env',
+          types: [{ description: 'Environment file', accept: { 'text/plain': ['.env'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(content);
+        await writable.close();
+        showSaveResult('ok', ['✓ Saved! Make sure it\'s in your freshdesk-mcp folder.']);
+        btn.textContent = 'Saved ✓';
+        setTimeout(() => { closeEnvModal(); markDone(4); }, 1200);
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          btn.disabled = false; btn.textContent = 'Save .env'; return;
+        }
+        // fall through to download
+      }
+    }
+
+    // Fallback: download as blob
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = '.env';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showSaveResult('info', [
+      '⬇ File downloaded as .env',
+      'Move it into your freshdesk-mcp folder, then click "Mark as done" below.',
+    ]);
+    btn.disabled = false;
+    btn.textContent = 'Save .env';
+  }
 </script>
 </body>
 </html>
