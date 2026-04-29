@@ -20,7 +20,7 @@ paths:
           in: query
           schema:
             type: string
-          description: "Filter preset: new_and_my_open, watching, spam, deleted"
+          description: "Filter preset: all_tickets, new_and_my_open, open, resolved, overdue, due_today, pending, watching"
         - name: order_by
           in: query
           schema:
@@ -65,10 +65,9 @@ paths:
           schema:
             type: string
           description: >
-            Freshdesk search query. Examples:
-            "status:4" (resolved), "status:4 AND tag:'billing'",
-            "subject:'password reset' AND status:4".
-            Status values: 2=Open 3=Pending 4=Resolved 5=Closed.
+            Search expression WITHOUT outer quotes. The API wraps it automatically.
+            Examples: status:4  or  status:4 AND tag:billing  or  subject:login AND status:4
+            Status: 2=Open 3=Pending 4=Resolved 5=Closed.
             Priority: 1=Low 2=Medium 3=High 4=Urgent.
         - name: page
           in: query
@@ -121,6 +120,7 @@ paths:
           in: query
           schema:
             type: integer
+          description: Page number
 
   /contacts/{contact_id}:
     get:
@@ -141,6 +141,7 @@ paths:
       parameters:
         - name: email
           in: query
+          required: true
           schema:
             type: string
           description: Exact email address to look up
