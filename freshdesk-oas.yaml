@@ -1,0 +1,150 @@
+openapi: 3.0.0
+info:
+  title: Freshdesk API (Read-Only)
+  version: 1.0.0
+  description: Read-only subset of Freshdesk REST API for support assistant use
+
+servers:
+  - url: https://{domain}.freshdesk.com/api/v2
+    variables:
+      domain:
+        default: your-domain
+
+paths:
+  /tickets:
+    get:
+      operationId: list_tickets
+      summary: List recent tickets, optionally filtered by status or priority
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+          description: "Filter preset: new_and_my_open, watching, spam, deleted"
+        - name: order_by
+          in: query
+          schema:
+            type: string
+          description: "Sort field: created_at, updated_at, priority, status"
+        - name: order_type
+          in: query
+          schema:
+            type: string
+          description: "Sort direction: asc or desc"
+        - name: page
+          in: query
+          schema:
+            type: integer
+          description: Page number (default 1, 30 per page)
+
+  /tickets/{ticket_id}:
+    get:
+      operationId: get_ticket
+      summary: Get full details of a ticket including its conversation thread
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The numeric ticket ID
+        - name: include
+          in: query
+          schema:
+            type: string
+          description: "Pass 'conversations' to include all replies in the thread"
+
+  /search/tickets:
+    get:
+      operationId: search_tickets
+      summary: Search tickets by keyword or field filter to find similar resolved issues
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: >
+            Freshdesk search query. Examples:
+            "status:4" (resolved), "status:4 AND tag:'billing'",
+            "subject:'password reset' AND status:4".
+            Status values: 2=Open 3=Pending 4=Resolved 5=Closed.
+            Priority: 1=Low 2=Medium 3=High 4=Urgent.
+        - name: page
+          in: query
+          schema:
+            type: integer
+          description: Page number
+
+  /solutions/categories:
+    get:
+      operationId: list_kb_categories
+      summary: List all knowledge base categories
+      parameters: []
+
+  /solutions/categories/{category_id}/folders:
+    get:
+      operationId: list_kb_folders
+      summary: List knowledge base folders within a category
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Category ID (get from list_kb_categories)
+
+  /solutions/folders/{folder_id}/articles:
+    get:
+      operationId: get_kb_articles
+      summary: Get all articles in a knowledge base folder
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Folder ID (get from list_kb_folders)
+
+  /search/solutions:
+    get:
+      operationId: search_kb
+      summary: Search the Freshdesk knowledge base for articles matching a keyword
+      parameters:
+        - name: term
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search term, e.g. "password reset" or "billing refund"
+        - name: page
+          in: query
+          schema:
+            type: integer
+
+  /contacts/{contact_id}:
+    get:
+      operationId: get_contact
+      summary: Get full details of a contact by their numeric ID
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Contact ID (found in ticket requester_id field)
+
+  /contacts:
+    get:
+      operationId: search_contacts
+      summary: Find a contact by email address
+      parameters:
+        - name: email
+          in: query
+          schema:
+            type: string
+          description: Exact email address to look up
+        - name: page
+          in: query
+          schema:
+            type: integer
