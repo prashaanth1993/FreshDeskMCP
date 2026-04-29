@@ -7,7 +7,7 @@ echo  Freshdesk MCP Chat - Setup
 echo ==========================================
 echo.
 
-where node >/dev/null 2>&1
+where node >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js not found.
     echo         Install Node.js 18 or newer from https://nodejs.org
@@ -15,6 +15,12 @@ if %errorlevel% neq 0 (
     pause & exit /b 1
 )
 for /f "tokens=*" %%v in ('node --version') do set NODE_VER=%%v
+for /f "tokens=1 delims=." %%a in ("!NODE_VER:v=!") do set NODE_MAJOR=%%a
+if !NODE_MAJOR! lss 18 (
+    echo [ERROR] Node.js 18 or newer required. Found: !NODE_VER!
+    echo         Install from https://nodejs.org
+    pause & exit /b 1
+)
 echo [OK] Node.js !NODE_VER! found.
 
 echo.
