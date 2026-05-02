@@ -3,7 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { appendFileSync, mkdirSync } from 'fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'fs';
 import * as dotenv from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -87,6 +87,13 @@ app.get('/api/models', async (_req, res) => {
   } catch (e) {
     res.status(503).json({ error: `Ollama unreachable: ${e.message}` });
   }
+});
+
+app.get('/api/version', (_req, res) => {
+  try {
+    const v = readFileSync(join(__dirname, '..', 'VERSION'), 'utf8').trim();
+    res.json({ version: v });
+  } catch { res.json({ version: 'unknown' }); }
 });
 
 app.get('/api/env-status', (_req, res) => {

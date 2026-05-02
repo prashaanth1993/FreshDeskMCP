@@ -417,6 +417,7 @@
   </div>
 
   <span class="reset-link" onclick="resetProgress()">Reset progress</span>
+  <p style="text-align:center;color:#334155;font-size:0.75rem;margin-top:12px;" id="versionLine"></p>
 
 </div>
 
@@ -599,8 +600,18 @@
       if (appRunning) markDone(6);
     }
 
-    // When app is running, upgrade env panel to live-verified values
-    if (await checkApp()) refreshEnvFromApp();
+    // When app is running, upgrade env panel and show version
+    if (await checkApp()) {
+      refreshEnvFromApp();
+      try {
+        const r = await fetch('http://localhost:3000/api/version', { signal: AbortSignal.timeout(2000) });
+        if (r.ok) {
+          const d = await r.json();
+          const el = document.getElementById('versionLine');
+          if (el) el.textContent = 'App version: ' + d.version;
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
