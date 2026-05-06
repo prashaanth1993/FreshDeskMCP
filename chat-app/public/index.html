@@ -169,6 +169,60 @@
     }
     .send-btn:disabled { background: #93c5fd; cursor: not-allowed; }
     .send-btn:hover:not(:disabled) { background: #1d4ed8; }
+
+    /* Settings */
+    .settings-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 0;
+      width: 100%;
+      text-align: left;
+    }
+    .settings-toggle:hover { color: #cbd5e1; }
+    .settings-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 4px;
+    }
+    .settings-panel.open { display: flex; }
+    .settings-field { display: flex; flex-direction: column; gap: 4px; }
+    .settings-field label { font-size: 11px; color: #94a3b8; }
+    .settings-field input {
+      padding: 6px 8px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 5px;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-family: 'SF Mono', Consolas, monospace;
+    }
+    .settings-field input:focus { outline: none; border-color: #3b82f6; }
+    .settings-field input::placeholder { color: #475569; }
+    .settings-save {
+      padding: 6px 10px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    .settings-save:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .settings-save:hover:not(:disabled) { background: #1d4ed8; }
+    .settings-status { font-size: 11px; min-height: 14px; }
+    .settings-status.ok { color: #4ade80; }
+    .settings-status.err { color: #f87171; }
   </style>
 </head>
 <body>
@@ -181,6 +235,21 @@
   <div>
     <div class="sidebar-label">Available Tools</div>
     <div class="tools-list" id="toolsList"></div>
+  </div>
+  <div>
+    <button class="settings-toggle" id="settingsToggle" onclick="toggleSettings()">⚙ Freshdesk Config</button>
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-field">
+        <label>Domain</label>
+        <input type="text" id="cfgDomain" placeholder="yourcompany" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="settings-field">
+        <label>API Key</label>
+        <input type="password" id="cfgApiKey" placeholder="leave blank to keep current" autocomplete="new-password">
+      </div>
+      <button class="settings-save" id="settingsSaveBtn" onclick="saveSettings()">Save &amp; Reconnect</button>
+      <div class="settings-status" id="settingsStatus"></div>
+    </div>
   </div>
   <div class="sidebar-footer">
     Agent reviews all drafts before sending. Nothing is posted to Freshdesk automatically.
@@ -403,6 +472,62 @@
 
   loadModels();
   loadTools();
+  loadEnvStatus();
+
+  async function loadEnvStatus() {
+    try {
+      const res = await fetch('/api/env-status');
+      const d = await res.json();
+      const domainInput = document.getElementById('cfgDomain');
+      const status = document.getElementById('settingsStatus');
+      if (d.domain) domainInput.value = d.domain;
+      if (d.missing) {
+        status.className = 'settings-status err';
+        status.textContent = 'Credentials missing — expand to configure';
+        document.getElementById('settingsPanel').classList.add('open');
+      } else {
+        status.className = 'settings-status ok';
+        status.textContent = 'Key: ' + (d.keyPreview || '••••');
+      }
+    } catch { /* server may still be starting */ }
+  }
+
+  function toggleSettings() {
+    document.getElementById('settingsPanel').classList.toggle('open');
+  }
+
+  async function saveSettings() {
+    const domain  = document.getElementById('cfgDomain').value.trim();
+    const apiKey  = document.getElementById('cfgApiKey').value.trim();
+    const btn     = document.getElementById('settingsSaveBtn');
+    const status  = document.getElementById('settingsStatus');
+
+    if (!domain) { status.className = 'settings-status err'; status.textContent = 'Domain is required'; return; }
+    if (!apiKey)  { status.className = 'settings-status err'; status.textContent = 'API key is required'; return; }
+
+    btn.disabled = true;
+    status.className = 'settings-status';
+    status.textContent = 'Saving…';
+
+    try {
+      const res = await fetch('/api/env', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, apiKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      status.className = 'settings-status ok';
+      status.textContent = 'Reconnected — ' + data.tools + ' tools';
+      document.getElementById('cfgApiKey').value = '';
+      loadTools();
+      loadEnvStatus();
+    } catch (e) {
+      status.className = 'settings-status err';
+      status.textContent = e.message;
+    }
+    btn.disabled = false;
+  }
 </script>
 </body>
 </html>

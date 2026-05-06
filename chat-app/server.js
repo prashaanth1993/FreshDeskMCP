@@ -3,7 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { appendFileSync, mkdirSync, readFileSync } from 'fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as dotenv from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,6 +40,13 @@ async function initMCP() {
     function: { name: t.name, description: t.description, parameters: t.inputSchema },
   }));
   log('INFO', `MCP connected — ${mcpTools.length} tools available`);
+}
+
+async function reinitMCP() {
+  try { await mcpClient?.close(); } catch { /* ignore */ }
+  mcpClient = null;
+  mcpTools  = [];
+  await initMCP();
 }
 
 async function callMCPTool(name, args) {
@@ -97,13 +104,41 @@ app.get('/api/version', (_req, res) => {
 });
 
 app.get('/api/env-status', (_req, res) => {
-  const domain = process.env.FRESHDESK_DOMAIN || '';
-  const key    = process.env.FRESHDESK_API_KEY || '';
+  const domain   = process.env.FRESHDESK_DOMAIN   || '';
+  const key      = process.env.FRESHDESK_API_KEY   || '';
+  const agentId  = process.env.FRESHDESK_AGENT_ID  || '';
   res.json({
     domain,
     keyPreview: key ? key.slice(0, 4) + '•'.repeat(Math.max(0, key.length - 4)) : '',
+    agentId,
     missing: !domain || !key,
   });
+});
+
+app.post('/api/env', async (req, res) => {
+  const { domain, apiKey, agentId } = req.body || {};
+  if (!domain || !apiKey) return res.status(400).json({ error: 'domain and apiKey are required' });
+
+  const envPath = join(__dirname, '..', '.env');
+  try {
+    const agentLine = agentId ? `\nFRESHDESK_AGENT_ID=${agentId}` : '';
+    writeFileSync(envPath, `FRESHDESK_DOMAIN=${domain}\nFRESHDESK_API_KEY=${apiKey}${agentLine}\n`);
+  } catch (e) {
+    return res.status(500).json({ error: `Could not write .env: ${e.message}` });
+  }
+
+  process.env.FRESHDESK_DOMAIN  = domain;
+  process.env.FRESHDESK_API_KEY = apiKey;
+  if (agentId) process.env.FRESHDESK_AGENT_ID = agentId;
+
+  try {
+    await reinitMCP();
+    log('INFO', `Config updated: domain=${domain}`);
+    res.json({ ok: true, tools: mcpTools.length });
+  } catch (e) {
+    log('ERROR', `MCP reinit failed: ${e.message}`);
+    res.status(500).json({ error: `Saved .env but MCP reinit failed: ${e.message}` });
+  }
 });
 
 app.get('/api/tools', (_req, res) => {

@@ -410,6 +410,88 @@
     </div>
   </div>
 
+  <!-- ── Step 7: Claude Desktop (optional) ── -->
+  <div class="step" id="step-7">
+    <div class="step-header" onclick="toggle(7)">
+      <div class="step-num">7</div>
+      <div class="step-title-group">
+        <span class="step-title">Connect Claude Desktop <span style="font-size:11px;font-weight:400;color:#64748b">(optional)</span></span>
+      </div>
+      <div class="step-check" id="check-7">✓</div>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Use the MCP server with Claude Desktop or any other MCP-compatible LLM client — alongside or instead of the built-in chat app.</p>
+
+      <p class="step-desc" style="margin-top:8px;"><strong>Option A — Stdio (recommended, works everywhere)</strong><br>
+      Claude Desktop spawns the MCP server directly as a child process. No HTTP server needed.</p>
+
+      <div class="os-win">
+        <p class="step-desc" style="margin-top:6px;">Config file: <strong>%APPDATA%\Claude\claude_desktop_config.json</strong></p>
+        <div class="cmd-block" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span class="cmd-text" id="cdConfigWin" style="white-space:pre;font-size:11px;">{
+  "mcpServers": {
+    "freshdesk": {
+      "command": "node",
+      "args": ["C:\\Users\\YourName\\freshdesk-mcp\\mcp-server\\index.js"]
+    }
+  }
+}</span>
+          <button class="copy-btn" onclick="copyClaudeConfig('win')">Copy</button>
+        </div>
+        <p class="step-desc" style="margin-top:6px;color:#94a3b8;">Replace <code>C:\Users\YourName\freshdesk-mcp</code> with your actual install path. Set <code>FRESHDESK_DOMAIN</code> and <code>FRESHDESK_API_KEY</code> in your <code>.env</code> file — the server reads it on startup.</p>
+      </div>
+
+      <div class="os-mac">
+        <p class="step-desc" style="margin-top:6px;">Config file: <strong>~/Library/Application Support/Claude/claude_desktop_config.json</strong></p>
+        <div class="cmd-block" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span class="cmd-text" id="cdConfigMac" style="white-space:pre;font-size:11px;">{
+  "mcpServers": {
+    "freshdesk": {
+      "command": "node",
+      "args": ["/Users/yourname/freshdesk-mcp/mcp-server/index.js"]
+    }
+  }
+}</span>
+          <button class="copy-btn" onclick="copyClaudeConfig('mac')">Copy</button>
+        </div>
+        <p class="step-desc" style="margin-top:6px;color:#94a3b8;">Replace <code>/Users/yourname/freshdesk-mcp</code> with your actual install path.</p>
+      </div>
+
+      <div class="os-linux">
+        <p class="step-desc" style="margin-top:6px;">Config file: <strong>~/.config/Claude/claude_desktop_config.json</strong></p>
+        <div class="cmd-block" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span class="cmd-text" id="cdConfigLinux" style="white-space:pre;font-size:11px;">{
+  "mcpServers": {
+    "freshdesk": {
+      "command": "node",
+      "args": ["/home/yourname/freshdesk-mcp/mcp-server/index.js"]
+    }
+  }
+}</span>
+          <button class="copy-btn" onclick="copyClaudeConfig('linux')">Copy</button>
+        </div>
+        <p class="step-desc" style="margin-top:6px;color:#94a3b8;">Replace <code>/home/yourname/freshdesk-mcp</code> with your actual install path.</p>
+      </div>
+
+      <p class="step-desc" style="margin-top:14px;"><strong>Option B — HTTP endpoint</strong><br>
+      The HTTP MCP server runs on port 3001 and accepts <code>POST /mcp</code>. Start it alongside the chat app:</p>
+
+      <div class="os-win">
+        <div class="cmd-block"><span class="cmd-text">node mcp-server\http-server.js</span><button class="copy-btn" onclick="copy(this,'node mcp-server\\http-server.js')">Copy</button></div>
+      </div>
+      <div class="os-mac">
+        <div class="cmd-block"><span class="cmd-text">node mcp-server/http-server.js</span><button class="copy-btn" onclick="copy(this,'node mcp-server/http-server.js')">Copy</button></div>
+      </div>
+      <div class="os-linux">
+        <div class="cmd-block"><span class="cmd-text">node mcp-server/http-server.js</span><button class="copy-btn" onclick="copy(this,'node mcp-server/http-server.js')">Copy</button></div>
+      </div>
+
+      <p class="step-desc" style="margin-top:6px;color:#94a3b8;">Endpoint: <strong>http://localhost:3001/mcp</strong>. Use with any client that supports the MCP Streamable HTTP transport. For Claude Desktop, use Option A (stdio) — it's simpler and has no extra process to manage.</p>
+
+      <button class="mark-done-btn" onclick="markDone(7)">✓  Done</button>
+    </div>
+  </div>
+
   <div class="all-done" id="allDone">
     <h2>You're all set!</h2>
     <p>Freshdesk Chat is installed and running.<br>Bookmark <strong>http://localhost:3000</strong> for daily use.</p>
@@ -441,6 +523,12 @@
       <div class="field-err" id="err-key">Please enter your API key.</div>
     </div>
 
+    <div class="field">
+      <label>Agent ID <span style="font-weight:400;color:#64748b;">(optional)</span></label>
+      <div class="field-hint">Your numeric agent ID — used to filter tickets assigned to you. Find it via Admin → Agents → click your profile and copy the ID from the URL.</div>
+      <input type="text" id="inp-agent-id" placeholder="e.g. 50000418897" autocomplete="off" spellcheck="false">
+    </div>
+
     <div class="modal-actions">
       <button class="btn-save" id="btnSave" onclick="saveEnv()">Save .env</button>
       <button class="btn-cancel" onclick="closeEnvModal()">Cancel</button>
@@ -450,7 +538,7 @@
   </div>
 </div>
 <script>
-  const TOTAL = 6;
+  const TOTAL = 7;
   const STORAGE_KEY = 'fd_wizard_done';
   const OS_KEY = 'fd_wizard_os';
 
@@ -535,6 +623,17 @@
     const done = getDone();
     if (!done.includes(num)) { done.push(num); saveDone(done); }
     renderAll();
+  }
+
+  function copyClaudeConfig(os) {
+    const id = { win: 'cdConfigWin', mac: 'cdConfigMac', linux: 'cdConfigLinux' }[os];
+    const el = document.getElementById(id);
+    if (!el) return;
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      // find the sibling copy button and flash it
+      const btn = el.parentElement.querySelector('.copy-btn');
+      if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500); }
+    }).catch(() => {});
   }
 
   function copy(btn, text) {
@@ -635,11 +734,11 @@
     try { return JSON.parse(localStorage.getItem(ENV_CACHE_KEY)) || null; } catch { return null; }
   }
 
-  function setCachedEnv(domain, keyPreview) {
-    localStorage.setItem(ENV_CACHE_KEY, JSON.stringify({ domain, keyPreview }));
+  function setCachedEnv(domain, keyPreview, agentId) {
+    localStorage.setItem(ENV_CACHE_KEY, JSON.stringify({ domain, keyPreview, agentId: agentId || '' }));
   }
 
-  function renderEnvPanel(domain, keyPreview, source) {
+  function renderEnvPanel(domain, keyPreview, source, agentId) {
     const panel   = document.getElementById('env-status-panel');
     const preview = document.getElementById('env-preview');
     panel.style.display = 'block';
@@ -661,6 +760,7 @@
 
     const row1 = makeRow('FRESHDESK_DOMAIN',  hasDomain ? domain     : '', !hasDomain);
     const row2 = makeRow('FRESHDESK_API_KEY', hasKey    ? keyPreview : '', !hasKey);
+    const row3 = makeRow('FRESHDESK_AGENT_ID', agentId  ? agentId    : '', false);
 
     const srcEl = document.createElement('span');
     srcEl.className = 'ep-source' + (isLive ? ' live' : '');
@@ -675,6 +775,7 @@
 
     preview.appendChild(row1);
     preview.appendChild(row2);
+    preview.appendChild(row3);
 
     // Update the open-modal button label
     document.getElementById('btnOpenModal').textContent = '⚙  Edit credentials';
@@ -686,8 +787,8 @@
       if (!r.ok) return false;
       const d = await r.json();
       if (d.domain || d.keyPreview) {
-        setCachedEnv(d.domain, d.keyPreview);
-        renderEnvPanel(d.domain, d.keyPreview, 'live');
+        setCachedEnv(d.domain, d.keyPreview, d.agentId);
+        renderEnvPanel(d.domain, d.keyPreview, 'live', d.agentId);
         return true;
       }
     } catch { /* app not running yet */ }
@@ -696,14 +797,15 @@
 
   function initEnvPanel() {
     const cached = getCachedEnv();
-    if (cached) renderEnvPanel(cached.domain, cached.keyPreview, 'cached');
+    if (cached) renderEnvPanel(cached.domain, cached.keyPreview, 'cached', cached.agentId);
   }
 
   function openEnvModal() {
     // Pre-fill from cache if available
     const cached = getCachedEnv();
     if (cached) {
-      document.getElementById('inp-domain').value = cached.domain || '';
+      document.getElementById('inp-domain').value    = cached.domain   || '';
+      document.getElementById('inp-agent-id').value  = cached.agentId  || '';
       // Don't pre-fill masked key — user must re-enter to edit
     }
     document.getElementById('envModal').classList.add('open');
@@ -724,8 +826,10 @@
     if (e.target === document.getElementById('envModal')) closeEnvModal();
   }
 
-  function buildEnvContent(domain, apiKey) {
-    return 'FRESHDESK_DOMAIN=' + domain + '\nFRESHDESK_API_KEY=' + apiKey + '\n';
+  function buildEnvContent(domain, apiKey, agentId) {
+    let content = 'FRESHDESK_DOMAIN=' + domain + '\nFRESHDESK_API_KEY=' + apiKey + '\n';
+    if (agentId) content += 'FRESHDESK_AGENT_ID=' + agentId + '\n';
+    return content;
   }
 
   function showSaveResult(type, lines) {
@@ -740,8 +844,9 @@
   }
 
   async function saveEnv() {
-    const domain = document.getElementById('inp-domain').value.trim();
-    const apiKey = document.getElementById('inp-key').value.trim();
+    const domain  = document.getElementById('inp-domain').value.trim();
+    const apiKey  = document.getElementById('inp-key').value.trim();
+    const agentId = document.getElementById('inp-agent-id').value.trim();
     let valid = true;
 
     const domainInp = document.getElementById('inp-domain');
@@ -757,7 +862,7 @@
     if (!valid) return;
 
     const keyPreview = maskKey(apiKey);
-    const content    = buildEnvContent(domain, apiKey);
+    const content    = buildEnvContent(domain, apiKey, agentId);
     const btn        = document.getElementById('btnSave');
     btn.disabled = true;
     btn.textContent = 'Saving…';
@@ -772,8 +877,8 @@
         const writable = await handle.createWritable();
         await writable.write(content);
         await writable.close();
-        setCachedEnv(domain, keyPreview);
-        renderEnvPanel(domain, keyPreview, 'cached');
+        setCachedEnv(domain, keyPreview, agentId);
+        renderEnvPanel(domain, keyPreview, 'cached', agentId);
         showSaveResult('ok', ['✓ Saved! Make sure it\'s in your freshdesk-mcp folder.']);
         btn.textContent = 'Saved ✓';
         setTimeout(() => { closeEnvModal(); markDone(4); }, 1200);
@@ -795,8 +900,8 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    setCachedEnv(domain, keyPreview);
-    renderEnvPanel(domain, keyPreview, 'cached');
+    setCachedEnv(domain, keyPreview, agentId);
+    renderEnvPanel(domain, keyPreview, 'cached', agentId);
     showSaveResult('info', [
       '⬇ File downloaded as .env',
       'Move it into your freshdesk-mcp folder, then click "✓ .env is already saved" below.',

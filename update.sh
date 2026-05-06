@@ -3,25 +3,37 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT="$(dirname "$SCRIPT_DIR")"
-ZIP="$PARENT/freshdesk-mcp.zip"
+
+# ── Find the zip ──────────────────────────────────────────────────────────────
+# Priority 1: first argument  (e.g. bash update.sh ~/Downloads/freshdesk-mcp.zip)
+# Priority 2: freshdesk-mcp.zip in the folder above this one
+
+if [ -n "$1" ]; then
+    ZIP="$1"
+    echo "Using: $ZIP"
+else
+    ZIP="$PARENT/freshdesk-mcp.zip"
+    echo "No path given — looking for: $ZIP"
+fi
 
 echo "=========================================="
 echo " Freshdesk MCP Chat - Update"
 echo "=========================================="
 echo ""
-echo "BEFORE YOU CONTINUE:"
-echo "  - Stop the app (Ctrl+C in the terminal running start.sh)"
-echo "  - Place freshdesk-mcp.zip in: $PARENT"
-echo ""
-read -rp "Press Enter when ready..."
-
-# ── Find the zip ──────────────────────────────────────────────────────────────
 
 if [ ! -f "$ZIP" ]; then
-    echo "[ERROR] freshdesk-mcp.zip not found at: $ZIP"
-    echo "        Download the new zip, place it there, then run update.sh again."
+    echo "[ERROR] Update zip not found."
+    echo ""
+    echo "To update, run one of these:"
+    echo "  bash update.sh ~/Downloads/freshdesk-mcp.zip"
+    echo "  OR place freshdesk-mcp.zip in: $PARENT"
     exit 1
 fi
+
+echo "BEFORE YOU CONTINUE:"
+echo "  - Stop the app (Ctrl+C in the terminal running start.sh)"
+echo ""
+read -rp "Press Enter when ready..."
 
 # ── Show versions ─────────────────────────────────────────────────────────────
 
@@ -47,6 +59,12 @@ echo ""
 echo "[2/3] Extracting update (overwrites code files, not .env)..."
 unzip -o "$ZIP" -d "$PARENT"
 echo "[OK] Files updated."
+
+# Restore .env (extraction overwrites it with the blank template)
+if [ -f "$SCRIPT_DIR/.env.bak" ]; then
+    cp "$SCRIPT_DIR/.env.bak" "$SCRIPT_DIR/.env"
+    echo "[OK] .env restored from backup."
+fi
 
 # ── npm install ───────────────────────────────────────────────────────────────
 
