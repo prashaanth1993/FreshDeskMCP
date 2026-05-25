@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "freshdesk": {
+      "command": "node",
+      "args": ["mcp-server/index.js"],
+      "env": {
+        "FRESHDESK_DOMAIN": "your-subdomain",
+        "FRESHDESK_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}

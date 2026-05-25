@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as dotenv from 'dotenv';
-import { buildTools, freshdeskFetch, loadOAS, webSearch } from './tools.js';
+import { applyMineFilter, buildTools, freshdeskFetch, loadOAS, webSearch } from './tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH  = join(__dirname, '..', '.env');
@@ -32,6 +32,19 @@ export function createFreshdeskServer() {
 
   const oas      = loadOAS(join(__dirname, '..', 'freshdesk-oas.yaml'));
   const allTools = [...buildTools(oas), WEB_SEARCH_TOOL];
+
+  if (FRESHDESK_AGENT_ID) {
+    const mineProp = {
+      type: 'boolean',
+      description: `Shortcut for "my tickets". Uses FRESHDESK_AGENT_ID=${FRESHDESK_AGENT_ID} from .env. For search_tickets, prepends agent_id:<id> to query. For list_tickets, sets filter=new_and_my_open.`,
+    };
+    for (const tool of allTools) {
+      if (tool.name === 'search_tickets' || tool.name === 'list_tickets') {
+        tool.inputSchema.properties.mine = mineProp;
+      }
+    }
+  }
+
   const publicTools = allTools.map(({ _meta, ...t }) => t);
 
   const server = new Server(
@@ -50,7 +63,8 @@ export function createFreshdeskServer() {
       } else {
         const tool = allTools.find(t => t.name === name);
         if (!tool) throw new Error(`Unknown tool: ${name}`);
-        result = await freshdeskFetch(BASE_URL, AUTH, tool._meta.method, tool._meta.path, args);
+        const effectiveArgs = applyMineFilter(name, args, FRESHDESK_AGENT_ID);
+        result = await freshdeskFetch(BASE_URL, AUTH, tool._meta, effectiveArgs);
       }
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (e) {

@@ -1,5 +1,26 @@
+# Dependencies
 node_modules/
+
+# Secrets — NEVER commit these
 .env
+.mcp.json
+
+# Build artifacts
 *.zip
 logs/
-logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Local tool state
+.claude/
+.playwright-mcp/
+
+# Unrelated scratch (photo/album experiments)
+album-*.png
+all-photos.json
+candidates.json
+photo-links.json
+collage-picks/

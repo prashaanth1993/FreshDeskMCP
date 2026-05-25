@@ -1,8 +1,12 @@
 openapi: 3.0.0
 info:
-  title: Freshdesk API (Read-Only)
-  version: 1.0.0
-  description: Read-only subset of Freshdesk REST API for support assistant use
+  title: Freshdesk API (Comprehensive)
+  version: 2.0.0
+  description: >
+    Comprehensive Freshdesk REST v2 coverage for an MCP server.
+    Includes full CRUD on Tickets, Contacts, Companies, Agents, Groups, Solutions,
+    plus reads on Roles, Skills, Email Configs, Business Hours, SLA Policies, Surveys.
+    Each operation maps 1:1 to an MCP tool via operationId.
 
 servers:
   - url: https://{domain}.freshdesk.com/api/v2
@@ -11,141 +15,855 @@ servers:
         default: your-domain
 
 paths:
+
+  # ─────────────────────────── TICKETS ───────────────────────────
   /tickets:
     get:
       operationId: list_tickets
-      summary: List recent tickets, optionally filtered by status or priority
+      summary: List recent tickets, optionally filtered by preset
       parameters:
-        - name: filter
-          in: query
-          schema:
-            type: string
-          description: "Filter preset: all_tickets, new_and_my_open, open, resolved, overdue, due_today, pending, watching"
-        - name: order_by
-          in: query
-          schema:
-            type: string
-          description: "Sort field: created_at, updated_at, priority, status"
-        - name: order_type
-          in: query
-          schema:
-            type: string
-          description: "Sort direction: asc or desc"
-        - name: page
-          in: query
-          schema:
-            type: integer
-          description: Page number (default 1, 30 per page)
+        - { name: filter, in: query, schema: { type: string }, description: "Filter preset: all_tickets, new_and_my_open, open, resolved, overdue, due_today, pending, watching" }
+        - { name: order_by, in: query, schema: { type: string }, description: "Sort field: created_at, updated_at, priority, status" }
+        - { name: order_type, in: query, schema: { type: string }, description: "Sort direction: asc or desc" }
+        - { name: page, in: query, schema: { type: integer }, description: "Page number (default 1, 30 per page)" }
+        - { name: per_page, in: query, schema: { type: integer }, description: "Items per page (max 100)" }
+        - { name: include, in: query, schema: { type: string }, description: "Comma-separated: stats, requester, description" }
+        - { name: updated_since, in: query, schema: { type: string }, description: "ISO 8601 timestamp — return tickets updated after this" }
+    post:
+      operationId: create_ticket
+      summary: Create a new ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, priority, source]
+              properties:
+                subject: { type: string, description: "Ticket subject" }
+                description: { type: string, description: "HTML body of the ticket" }
+                email: { type: string, description: "Requester email (one of email / requester_id / phone / facebook_id / twitter_id required)" }
+                requester_id: { type: integer, description: "Requester contact ID" }
+                phone: { type: string }
+                name: { type: string, description: "Requester name (required if email is for a new contact)" }
+                status: { type: integer, description: "2=Open 3=Pending 4=Resolved 5=Closed" }
+                priority: { type: integer, description: "1=Low 2=Medium 3=High 4=Urgent" }
+                source: { type: integer, description: "1=Email 2=Portal 3=Phone 7=Chat 9=Feedback widget 10=Outbound email" }
+                type: { type: string, description: "Ticket type (configured per account)" }
+                group_id: { type: integer }
+                responder_id: { type: integer, description: "Assigned agent ID" }
+                product_id: { type: integer }
+                cc_emails: { type: array, items: { type: string } }
+                tags: { type: array, items: { type: string } }
+                custom_fields: { type: object }
+                due_by: { type: string }
+                fr_due_by: { type: string }
 
   /tickets/{ticket_id}:
     get:
       operationId: get_ticket
-      summary: Get full details of a ticket including its conversation thread
+      summary: Get full details of a ticket
       parameters:
-        - name: ticket_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric ticket ID
-        - name: include
-          in: query
-          schema:
-            type: string
-          description: "Pass 'conversations' to include all replies in the thread"
+        - { name: ticket_id, in: path, required: true, schema: { type: integer }, description: "Numeric ticket ID" }
+        - { name: include, in: query, schema: { type: string }, description: "Comma-separated: conversations, requester, company, stats" }
+    put:
+      operationId: update_ticket
+      summary: Update fields on an existing ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject: { type: string }
+                description: { type: string }
+                status: { type: integer }
+                priority: { type: integer }
+                type: { type: string }
+                group_id: { type: integer }
+                responder_id: { type: integer }
+                product_id: { type: integer }
+                tags: { type: array, items: { type: string } }
+                custom_fields: { type: object }
+                due_by: { type: string }
+                fr_due_by: { type: string }
+    delete:
+      operationId: delete_ticket
+      summary: Soft-delete a ticket (moves to trash, can be restored within 30 days)
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+
+  /tickets/{ticket_id}/restore:
+    put:
+      operationId: restore_ticket
+      summary: Restore a soft-deleted ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+
+  /tickets/{ticket_id}/reply:
+    post:
+      operationId: reply_to_ticket
+      summary: Send a public reply to the requester on a ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, description: "HTML body of the reply" }
+                from_email: { type: string, description: "Sender email (must be a configured product email)" }
+                user_id: { type: integer, description: "Agent ID acting on the reply" }
+                cc_emails: { type: array, items: { type: string } }
+                bcc_emails: { type: array, items: { type: string } }
+
+  /tickets/{ticket_id}/notes:
+    post:
+      operationId: add_note_to_ticket
+      summary: Add a note to a ticket (private by default)
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, description: "HTML body of the note" }
+                private: { type: boolean, description: "true = internal-only (default true), false = visible to requester" }
+                user_id: { type: integer }
+                notify_emails: { type: array, items: { type: string } }
+                incoming: { type: boolean }
+
+  /tickets/{ticket_id}/conversations:
+    get:
+      operationId: list_ticket_conversations
+      summary: List all conversation items (replies + notes) on a ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer } }
+
+  /tickets/{ticket_id}/time_entries:
+    get:
+      operationId: list_ticket_time_entries
+      summary: List time entries logged on a ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+    post:
+      operationId: create_ticket_time_entry
+      summary: Log a time entry against a ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: integer }
+                billable: { type: boolean }
+                note: { type: string }
+                time_spent: { type: string, description: "Format hh:mm, e.g. '01:30'" }
+                executed_at: { type: string }
+                timer_running: { type: boolean }
+
+  /tickets/{ticket_id}/satisfaction_ratings:
+    get:
+      operationId: get_ticket_satisfaction_ratings
+      summary: Get CSAT/satisfaction ratings for a ticket
+      parameters:
+        - { name: ticket_id, in: path, required: true, schema: { type: integer } }
+
+  /tickets/merge:
+    put:
+      operationId: merge_tickets
+      summary: Merge secondary tickets into a primary ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [primary_id, ticket_ids]
+              properties:
+                primary_id: { type: integer }
+                ticket_ids: { type: array, items: { type: integer } }
+                convert_recepients_to_cc: { type: boolean }
+                note: { type: object, description: "{ body: string, private: boolean }" }
 
   /search/tickets:
     get:
       operationId: search_tickets
-      summary: Search tickets by keyword or field filter to find similar resolved issues
+      summary: Search tickets by field filter
       parameters:
         - name: query
           in: query
           required: true
-          schema:
-            type: string
+          schema: { type: string }
           description: >
             Search expression WITHOUT outer quotes. The API wraps it automatically.
-            Examples: status:4  or  status:4 AND tag:billing  or  subject:login AND status:4
-            Status: 2=Open 3=Pending 4=Resolved 5=Closed.
-            Priority: 1=Low 2=Medium 3=High 4=Urgent.
-        - name: page
-          in: query
-          schema:
-            type: integer
-          description: Page number
+            Examples: status:4  or  status:4 AND tag:billing  or  agent_id:123 AND status:2
+            Status: 2=Open 3=Pending 4=Resolved 5=Closed. Priority: 1=Low 2=Medium 3=High 4=Urgent.
+        - { name: page, in: query, schema: { type: integer } }
 
-  /solutions/categories:
+  # ─────────────────────────── CONTACTS ───────────────────────────
+  /contacts:
     get:
-      operationId: list_kb_categories
-      summary: List all knowledge base categories
-      parameters: []
-
-  /solutions/categories/{category_id}/folders:
-    get:
-      operationId: list_kb_folders
-      summary: List knowledge base folders within a category
+      operationId: list_contacts
+      summary: List contacts
       parameters:
-        - name: category_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Category ID (get from list_kb_categories)
-
-  /solutions/folders/{folder_id}/articles:
-    get:
-      operationId: get_kb_articles
-      summary: Get all articles in a knowledge base folder
-      parameters:
-        - name: folder_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Folder ID (get from list_kb_folders)
-
-  /search/solutions:
-    get:
-      operationId: search_kb
-      summary: Search the Freshdesk knowledge base for articles matching a keyword
-      parameters:
-        - name: term
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Search term, e.g. "password reset" or "billing refund"
-        - name: page
-          in: query
-          schema:
-            type: integer
-          description: Page number
+        - { name: email, in: query, schema: { type: string }, description: "Filter by exact email" }
+        - { name: mobile, in: query, schema: { type: string } }
+        - { name: phone, in: query, schema: { type: string } }
+        - { name: company_id, in: query, schema: { type: integer } }
+        - { name: state, in: query, schema: { type: string }, description: "blocked, deleted, unverified, verified" }
+        - { name: updated_since, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer } }
+    post:
+      operationId: create_contact
+      summary: Create a new contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                mobile: { type: string }
+                twitter_id: { type: string }
+                unique_external_id: { type: string }
+                company_id: { type: integer }
+                view_all_tickets: { type: boolean }
+                description: { type: string }
+                job_title: { type: string }
+                language: { type: string }
+                time_zone: { type: string }
+                tags: { type: array, items: { type: string } }
+                custom_fields: { type: object }
+                address: { type: string }
 
   /contacts/{contact_id}:
     get:
       operationId: get_contact
-      summary: Get full details of a contact by their numeric ID
+      summary: Get contact details
       parameters:
-        - name: contact_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Contact ID (found in ticket requester_id field)
+        - { name: contact_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_contact
+      summary: Update an existing contact
+      parameters:
+        - { name: contact_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                mobile: { type: string }
+                company_id: { type: integer }
+                description: { type: string }
+                job_title: { type: string }
+                tags: { type: array, items: { type: string } }
+                custom_fields: { type: object }
+    delete:
+      operationId: delete_contact
+      summary: Soft-delete a contact
+      parameters:
+        - { name: contact_id, in: path, required: true, schema: { type: integer } }
 
-  /contacts:
+  /contacts/{contact_id}/restore:
+    put:
+      operationId: restore_contact
+      summary: Restore a soft-deleted contact
+      parameters:
+        - { name: contact_id, in: path, required: true, schema: { type: integer } }
+
+  /contacts/{contact_id}/hard_delete:
+    delete:
+      operationId: hard_delete_contact
+      summary: Permanently delete a contact (must be soft-deleted first)
+      parameters:
+        - { name: contact_id, in: path, required: true, schema: { type: integer } }
+        - { name: force, in: query, schema: { type: boolean }, description: "Skip the soft-delete prerequisite" }
+
+  /contacts/merge:
+    post:
+      operationId: merge_contacts
+      summary: Merge secondary contacts into a primary contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [primary_contact_id, secondary_contact_ids]
+              properties:
+                primary_contact_id: { type: integer }
+                secondary_contact_ids: { type: array, items: { type: integer } }
+                contact: { type: object, description: "Optional overrides for the merged contact's fields" }
+
+  /search/contacts:
     get:
       operationId: search_contacts
-      summary: Find a contact by email address
+      summary: Search contacts by query expression
       parameters:
-        - name: email
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Exact email address to look up
-        - name: page
-          in: query
-          schema:
-            type: integer
+        - { name: query, in: query, required: true, schema: { type: string }, description: "e.g. email:'john@example.com' or company_id:123" }
+        - { name: page, in: query, schema: { type: integer } }
+
+  # ─────────────────────────── COMPANIES ───────────────────────────
+  /companies:
+    get:
+      operationId: list_companies
+      summary: List companies
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer } }
+        - { name: updated_since, in: query, schema: { type: string } }
+    post:
+      operationId: create_company
+      summary: Create a company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                domains: { type: array, items: { type: string } }
+                note: { type: string }
+                health_score: { type: string }
+                account_tier: { type: string }
+                renewal_date: { type: string }
+                industry: { type: string }
+                custom_fields: { type: object }
+
+  /companies/{company_id}:
+    get:
+      operationId: get_company
+      summary: Get company details
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_company
+      summary: Update a company
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                domains: { type: array, items: { type: string } }
+                note: { type: string }
+                industry: { type: string }
+                custom_fields: { type: object }
+    delete:
+      operationId: delete_company
+      summary: Delete a company
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+
+  /search/companies:
+    get:
+      operationId: search_companies
+      summary: Search companies by query expression
+      parameters:
+        - { name: query, in: query, required: true, schema: { type: string }, description: "e.g. domain:'acme.com'" }
+        - { name: page, in: query, schema: { type: integer } }
+
+  /companies/autocomplete:
+    get:
+      operationId: autocomplete_companies
+      summary: Autocomplete companies by name prefix
+      parameters:
+        - { name: name, in: query, required: true, schema: { type: string } }
+
+  # ─────────────────────────── AGENTS ───────────────────────────
+  /agents:
+    get:
+      operationId: list_agents
+      summary: List agents
+      parameters:
+        - { name: email, in: query, schema: { type: string } }
+        - { name: mobile, in: query, schema: { type: string } }
+        - { name: phone, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string }, description: "fulltime, occasional" }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer } }
+    post:
+      operationId: create_agent
+      summary: Create an agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, ticket_scope, role_ids]
+              properties:
+                email: { type: string }
+                ticket_scope: { type: integer, description: "1=Global 2=Group 3=Restricted" }
+                occasional: { type: boolean }
+                signature: { type: string }
+                skill_ids: { type: array, items: { type: integer } }
+                group_ids: { type: array, items: { type: integer } }
+                role_ids: { type: array, items: { type: integer } }
+                language: { type: string }
+                time_zone: { type: string }
+
+  /agents/{agent_id}:
+    get:
+      operationId: get_agent
+      summary: Get an agent's details
+      parameters:
+        - { name: agent_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_agent
+      summary: Update an agent
+      parameters:
+        - { name: agent_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticket_scope: { type: integer }
+                occasional: { type: boolean }
+                signature: { type: string }
+                skill_ids: { type: array, items: { type: integer } }
+                group_ids: { type: array, items: { type: integer } }
+                role_ids: { type: array, items: { type: integer } }
+                language: { type: string }
+                time_zone: { type: string }
+    delete:
+      operationId: delete_agent
+      summary: Downgrade an agent to a contact (does not delete the user)
+      parameters:
+        - { name: agent_id, in: path, required: true, schema: { type: integer } }
+
+  /agents/me:
+    get:
+      operationId: get_current_agent
+      summary: Get the agent record for the API key owner
+      parameters: []
+
+  /search/agents:
+    get:
+      operationId: search_agents
+      summary: Search agents by name or email
+      parameters:
+        - { name: term, in: query, required: true, schema: { type: string } }
+
+  # ─────────────────────────── GROUPS ───────────────────────────
+  /groups:
+    get:
+      operationId: list_groups
+      summary: List agent groups
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer } }
+    post:
+      operationId: create_group
+      summary: Create a group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                agent_ids: { type: array, items: { type: integer } }
+                auto_ticket_assign: { type: integer }
+                escalate_to: { type: integer }
+                unassigned_for: { type: string }
+                business_hour_id: { type: integer }
+
+  /groups/{group_id}:
+    get:
+      operationId: get_group
+      summary: Get a group
+      parameters:
+        - { name: group_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_group
+      summary: Update a group
+      parameters:
+        - { name: group_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                agent_ids: { type: array, items: { type: integer } }
+                auto_ticket_assign: { type: integer }
+                escalate_to: { type: integer }
+                unassigned_for: { type: string }
+                business_hour_id: { type: integer }
+    delete:
+      operationId: delete_group
+      summary: Delete a group
+      parameters:
+        - { name: group_id, in: path, required: true, schema: { type: integer } }
+
+  # ─────────────────────────── ROLES / SKILLS ───────────────────────────
+  /roles:
+    get:
+      operationId: list_roles
+      summary: List roles
+      parameters: []
+
+  /roles/{role_id}:
+    get:
+      operationId: get_role
+      summary: Get a role
+      parameters:
+        - { name: role_id, in: path, required: true, schema: { type: integer } }
+
+  /skills:
+    get:
+      operationId: list_skills
+      summary: List agent skills
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+
+  /skills/{skill_id}:
+    get:
+      operationId: get_skill
+      summary: Get a skill
+      parameters:
+        - { name: skill_id, in: path, required: true, schema: { type: integer } }
+
+  # ─────────────────────────── EMAIL CONFIGS / PRODUCTS ───────────────────────────
+  /email_configs:
+    get:
+      operationId: list_email_configs
+      summary: List email/product configurations
+      parameters: []
+
+  /email_configs/{email_config_id}:
+    get:
+      operationId: get_email_config
+      summary: Get an email config
+      parameters:
+        - { name: email_config_id, in: path, required: true, schema: { type: integer } }
+
+  /products:
+    get:
+      operationId: list_products
+      summary: List products
+      parameters: []
+
+  /products/{product_id}:
+    get:
+      operationId: get_product
+      summary: Get a product
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: integer } }
+
+  # ─────────────────────────── BUSINESS HOURS / SLA ───────────────────────────
+  /business_hours:
+    get:
+      operationId: list_business_hours
+      summary: List business hours schedules
+      parameters: []
+
+  /business_hours/{id}:
+    get:
+      operationId: get_business_hours
+      summary: Get a business hours schedule
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+
+  /sla_policies:
+    get:
+      operationId: list_sla_policies
+      summary: List SLA policies
+      parameters: []
+
+  # ─────────────────────────── SOLUTIONS / KB ───────────────────────────
+  /solutions/categories:
+    get:
+      operationId: list_kb_categories
+      summary: List knowledge base categories
+      parameters: []
+    post:
+      operationId: create_kb_category
+      summary: Create a KB category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                visible_in_portals: { type: array, items: { type: integer } }
+
+  /solutions/categories/{category_id}:
+    get:
+      operationId: get_kb_category
+      summary: Get a KB category
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_kb_category
+      summary: Update a KB category
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                visible_in_portals: { type: array, items: { type: integer } }
+    delete:
+      operationId: delete_kb_category
+      summary: Delete a KB category
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: integer } }
+
+  /solutions/categories/{category_id}/folders:
+    get:
+      operationId: list_kb_folders
+      summary: List folders in a KB category
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: integer } }
+    post:
+      operationId: create_kb_folder
+      summary: Create a folder under a KB category
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, visibility]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                visibility: { type: integer, description: "1=All users 2=Logged in users 3=Agents 4=Selected companies 5=Selected contact segments" }
+                company_ids: { type: array, items: { type: integer } }
+
+  /solutions/folders/{folder_id}:
+    get:
+      operationId: get_kb_folder
+      summary: Get a KB folder
+      parameters:
+        - { name: folder_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_kb_folder
+      summary: Update a KB folder
+      parameters:
+        - { name: folder_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                visibility: { type: integer }
+                company_ids: { type: array, items: { type: integer } }
+    delete:
+      operationId: delete_kb_folder
+      summary: Delete a KB folder
+      parameters:
+        - { name: folder_id, in: path, required: true, schema: { type: integer } }
+
+  /solutions/folders/{folder_id}/articles:
+    get:
+      operationId: get_kb_articles
+      summary: List articles in a KB folder
+      parameters:
+        - { name: folder_id, in: path, required: true, schema: { type: integer } }
+    post:
+      operationId: create_kb_article
+      summary: Create an article in a KB folder
+      parameters:
+        - { name: folder_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, status]
+              properties:
+                title: { type: string }
+                description: { type: string, description: "HTML body of the article" }
+                status: { type: integer, description: "1=Draft 2=Published" }
+                tags: { type: array, items: { type: string } }
+                seo_data: { type: object }
+
+  /solutions/articles/{article_id}:
+    get:
+      operationId: get_kb_article
+      summary: Get a KB article
+      parameters:
+        - { name: article_id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: update_kb_article
+      summary: Update a KB article
+      parameters:
+        - { name: article_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                status: { type: integer }
+                tags: { type: array, items: { type: string } }
+                seo_data: { type: object }
+    delete:
+      operationId: delete_kb_article
+      summary: Delete a KB article
+      parameters:
+        - { name: article_id, in: path, required: true, schema: { type: integer } }
+
+  /search/solutions:
+    get:
+      operationId: search_kb
+      summary: Search the knowledge base
+      parameters:
+        - { name: term, in: query, required: true, schema: { type: string }, description: "e.g. 'password reset' or 'billing refund'" }
+        - { name: page, in: query, schema: { type: integer } }
+
+  # ─────────────────────────── CONVERSATIONS ───────────────────────────
+  /conversations/{conversation_id}:
+    put:
+      operationId: update_conversation
+      summary: Update a reply or note (only the body)
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+    delete:
+      operationId: delete_conversation
+      summary: Delete a reply or note
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: integer } }
+
+  # ─────────────────────────── SURVEYS / CSAT ───────────────────────────
+  /surveys/satisfaction_ratings:
+    get:
+      operationId: list_satisfaction_ratings
+      summary: List satisfaction ratings across all tickets
+      parameters:
+        - { name: created_since, in: query, schema: { type: string } }
+        - { name: user_id, in: query, schema: { type: integer } }
+        - { name: page, in: query, schema: { type: integer } }
+
+  # ─────────────────────────── TIME ENTRIES (org-wide) ───────────────────────────
+  /time_entries:
+    get:
+      operationId: list_time_entries
+      summary: List time entries across all tickets
+      parameters:
+        - { name: company_id, in: query, schema: { type: integer } }
+        - { name: agent_id, in: query, schema: { type: integer } }
+        - { name: executed_after, in: query, schema: { type: string } }
+        - { name: executed_before, in: query, schema: { type: string } }
+        - { name: billable, in: query, schema: { type: boolean } }
+        - { name: page, in: query, schema: { type: integer } }
+
+  /time_entries/{time_entry_id}:
+    put:
+      operationId: update_time_entry
+      summary: Update a time entry
+      parameters:
+        - { name: time_entry_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                billable: { type: boolean }
+                note: { type: string }
+                time_spent: { type: string }
+                executed_at: { type: string }
+                timer_running: { type: boolean }
+                agent_id: { type: integer }
+    delete:
+      operationId: delete_time_entry
+      summary: Delete a time entry
+      parameters:
+        - { name: time_entry_id, in: path, required: true, schema: { type: integer } }
+
+  # ─────────────────────────── TICKET FIELDS / METADATA ───────────────────────────
+  /ticket_fields:
+    get:
+      operationId: list_ticket_fields
+      summary: List configured ticket fields (including custom fields)
+      parameters:
+        - { name: type, in: query, schema: { type: string }, description: "Optional: default_subject, default_description, etc." }
+
+  /contact_fields:
+    get:
+      operationId: list_contact_fields
+      summary: List configured contact fields
+      parameters: []
+
+  /company_fields:
+    get:
+      operationId: list_company_fields
+      summary: List configured company fields
+      parameters: []
