@@ -196,3 +196,4 @@ MIT — see `LICENSE`.
 ## Contributing
 
 PRs welcome. For new Freshdesk endpoints, add them to `freshdesk-oas.yaml` and the tools will be generated automatically. For server-behavior changes (auth, transport, response shaping), edit `mcp-server/tools.js` and add tests.
+# FreshDeskMCP
