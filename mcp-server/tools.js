@@ -149,13 +149,20 @@ export function buildUrl(baseUrl, urlPath, args) {
   return `${baseUrl}${path}${qs ? '?' + qs : ''}`;
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Make a Freshdesk API call.
  * baseUrl: https://{domain}.freshdesk.com/api/v2
  * auth: "Basic <base64>" header value
  * meta: { method, path, pathParams, queryParams, bodyParams }
+ *
+ * Retries on 429 (rate limit) and 5xx (transient server errors). Honors the
+ * Retry-After header when present, otherwise falls back to exponential backoff.
  */
-export async function freshdeskFetch(baseUrl, auth, meta, args) {
+export async function freshdeskFetch(baseUrl, auth, meta, args, opts = {}) {
+  const maxRetries = opts.maxRetries ?? 3;
+
   const processedArgs = (meta.path === '/search/tickets' && args?.query !== undefined)
     ? { ...args, query: `"${args.query}"` }
     : args;
@@ -170,15 +177,26 @@ export async function freshdeskFetch(baseUrl, auth, meta, args) {
     init.body = JSON.stringify(body);
   }
 
-  const res = await fetch(url, init);
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Freshdesk ${res.status} ${meta.method} ${meta.path}: ${text}`);
+    if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+      const retryAfter = Number(res.headers.get('retry-after'));
+      const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : Math.min(1000 * 2 ** attempt, 8000); // exponential backoff, capped at 8s
+      await sleep(delayMs);
+      continue;
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Freshdesk ${res.status} ${meta.method} ${meta.path}: ${text}`);
+    }
+    if (res.status === 204) return null;
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('application/json') ? res.json() : res.text();
   }
-  if (res.status === 204) return null;
-  const ct = res.headers.get('content-type') || '';
-  return ct.includes('application/json') ? res.json() : res.text();
 }
 
 /**
