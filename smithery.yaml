@@ -1,0 +1,20 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - freshdeskDomain
+      - freshdeskApiKey
+    properties:
+      freshdeskDomain:
+        type: string
+        description: Your Freshdesk account subdomain (the part before .freshdesk.com)
+      freshdeskApiKey:
+        type: string
+        description: Your Freshdesk API key (Freshdesk -> Profile Settings -> View API Key)
+      freshdeskAgentId:
+        type: string
+        description: Optional — your numeric Freshdesk agent ID, enables the `mine: true` shortcut on list_tickets/search_tickets
+  commandFunction: |-
+    (config) => ({ command: 'node', args: ['mcp-server/index.js'], env: { FRESHDESK_DOMAIN: config.freshdeskDomain, FRESHDESK_API_KEY: config.freshdeskApiKey, FRESHDESK_AGENT_ID: config.freshdeskAgentId || '' } })

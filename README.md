@@ -1,14 +1,18 @@
 # FreshDesk MCP
 
-A comprehensive [Model Context Protocol](https://modelcontextprotocol.io/) server for Freshdesk, plus an optional local-LLM chatbot UI powered by [Ollama](https://ollama.com/).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-6b46c1.svg)](https://modelcontextprotocol.io/)
+
+A comprehensive [Model Context Protocol](https://modelcontextprotocol.io/) server for Freshdesk — 78 tools covering tickets, contacts, companies, agents, groups, and the knowledge base — plus an optional local-LLM chatbot UI powered by [Ollama](https://ollama.com/) and a **zero-config setup wizard** so non-technical users can get running without touching a terminal.
 
 The MCP server exposes the Freshdesk REST v2 API as a set of typed tools that any MCP-compatible client (Claude Code, Claude Desktop, custom agents, etc.) can call. Tools are generated from a single OpenAPI spec, so adding a new endpoint is one YAML edit away.
 
 ## What's in here
 
+- **`wizard.html`** — double-click it. A guided, point-and-click setup flow that walks new users through `.env` configuration, saves progress in `localStorage` (close and resume anytime), and finishes with a direct link into the chat UI. No terminal required.
 - **`mcp-server/`** — the MCP server itself. Stateless, read+write coverage of Freshdesk v2 (78 tools across tickets, contacts, companies, agents, groups, knowledge base, time entries, conversations, surveys, and admin reads).
 - **`chat-app/`** — an optional local web UI that talks to an Ollama model and gives it the MCP tools. Lets you chat with your Freshdesk in plain English without sending data to a hosted LLM provider.
-- **`wizard.html`** — a setup wizard served by the chat app that walks new users through `.env` configuration.
 - **`freshdesk-oas.yaml`** — the OpenAPI spec the MCP tools are generated from. Single source of truth for what the server can do.
 
 ## Quick start
