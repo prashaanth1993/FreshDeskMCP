@@ -122,6 +122,43 @@
     }
     .tool-pill-name { font-weight: 700; flex-shrink: 0; }
     .tool-pill-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #3b82f6; }
+    .tool-pill-error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .tool-pill-error .tool-pill-preview { color: #dc2626; white-space: normal; }
+    .fix-form {
+      margin-top: 4px;
+      padding: 10px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 420px;
+    }
+    .fix-form-field { display: flex; flex-direction: column; gap: 2px; }
+    .fix-form-field label { font-size: 11px; color: #92400e; font-family: 'SF Mono', Consolas, monospace; }
+    .fix-form-field input {
+      padding: 5px 8px;
+      border: 1px solid #fcd34d;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: 'SF Mono', Consolas, monospace;
+    }
+    .fix-form-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+    .fix-form-send {
+      padding: 5px 12px;
+      background: #d97706;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .fix-form-send:hover { background: #b45309; }
+    .fix-form-send:disabled { background: #fcd34d; cursor: not-allowed; }
+    .fix-form-result { font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow-y: auto; }
+    .fix-form-result.ok { color: #15803d; }
+    .fix-form-result.err { color: #b91c1c; }
     .thinking {
       display: flex;
       align-items: center;
@@ -272,12 +309,22 @@
     'When given a ticket ID, always call get_ticket first to fetch its full details.\n' +
     'To find similar resolved issues, use search_tickets with status:4.\n' +
     'To look for KB articles, use search_kb.\n' +
+    'To list or fetch tickets (e.g. "my open tickets", "all open tickets", "tickets assigned to agent X"), ' +
+    'use list_tickets or search_tickets — pass mine: true to filter to the current agent when the user says ' +
+    '"my"/"mine" and an agent ID is configured, or filter/query params otherwise. These tools always exist; ' +
+    'never tell the user ticket listing is unsupported.\n' +
     'Use web_search only if Freshdesk data is insufficient.\n' +
+    'Only call a tool that creates, updates, or deletes something (e.g. update_ticket, update_conversation, ' +
+    'delete_*) when the user has explicitly asked you to make that change. Never invent one to "try something" ' +
+    'after a read-only call fails or as a workaround.\n' +
+    'If a tool call returns an error, stop and explain the error in plain language, or ask the user for the ' +
+    'missing information — do not guess arguments or try a different tool as a workaround.\n' +
     'When drafting a response, make it clear, professional, and concise.\n' +
     'Present the draft as text the agent should review and modify before sending.\n' +
     'Never claim to send anything on behalf of the agent.';
 
   let conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
+  let toolSchemas = {};
 
   async function loadModels() {
     const select = document.getElementById('modelSelect');
@@ -310,6 +357,7 @@
     try {
       const res = await fetch('/api/tools');
       const tools = await res.json();
+      toolSchemas = Object.fromEntries(tools.map(t => [t.name, t.inputSchema]));
       for (const t of tools) {
         const chip = document.createElement('div');
         chip.className = 'tool-chip';
@@ -354,12 +402,14 @@
         const pillsContainer = document.createElement('div');
         pillsContainer.className = 'tool-calls';
         for (const tc of toolCalls) {
+          const pillWrap = document.createElement('div');
+
           const pill = document.createElement('div');
-          pill.className = 'tool-pill';
+          pill.className = 'tool-pill' + (tc.isError ? ' tool-pill-error' : '');
 
           const nameEl = document.createElement('span');
           nameEl.className = 'tool-pill-name';
-          nameEl.textContent = '🔧 ' + tc.name;
+          nameEl.textContent = (tc.isError ? '⚠️ ' : '🔧 ') + tc.name;
 
           const preview = typeof tc.result === 'string'
             ? tc.result.substring(0, 100) + (tc.result.length > 100 ? '…' : '')
@@ -370,7 +420,18 @@
 
           pill.appendChild(nameEl);
           pill.appendChild(previewEl);
-          pillsContainer.appendChild(pill);
+
+          if (tc.isError) {
+            const fixBtn = document.createElement('button');
+            fixBtn.className = 'copy-btn';
+            fixBtn.style.marginLeft = '6px';
+            fixBtn.textContent = 'Fix & Send';
+            fixBtn.addEventListener('click', () => toggleFixForm(pillWrap, tc));
+            pill.appendChild(fixBtn);
+          }
+
+          pillWrap.appendChild(pill);
+          pillsContainer.appendChild(pillWrap);
         }
         row.appendChild(pillsContainer);
       }
@@ -378,6 +439,88 @@
 
     container.appendChild(row);
     container.scrollTop = container.scrollHeight;
+  }
+
+  function toggleFixForm(pillWrap, tc) {
+    const existing = pillWrap.querySelector('.fix-form');
+    if (existing) { existing.remove(); return; }
+
+    const schema = toolSchemas[tc.name] || { properties: {}, required: [] };
+    const properties = schema.properties || {};
+    const required = new Set(schema.required || []);
+    const attempted = tc.args || {};
+
+    const form = document.createElement('div');
+    form.className = 'fix-form';
+
+    const inputs = {};
+    const fieldNames = Object.keys(properties).length > 0 ? Object.keys(properties) : Object.keys(attempted);
+    for (const key of fieldNames) {
+      const field = document.createElement('div');
+      field.className = 'fix-form-field';
+
+      const label = document.createElement('label');
+      const desc = properties[key]?.description ? ` — ${properties[key].description}` : '';
+      label.textContent = key + (required.has(key) ? ' *' : '') + desc;
+
+      const input = document.createElement('input');
+      input.type = (properties[key]?.type === 'integer' || properties[key]?.type === 'number') ? 'number' : 'text';
+      const attemptedVal = attempted[key];
+      input.value = attemptedVal === null || attemptedVal === undefined ? '' : String(attemptedVal);
+      input.placeholder = required.has(key) ? 'required' : 'optional';
+
+      inputs[key] = input;
+      field.appendChild(label);
+      field.appendChild(input);
+      form.appendChild(field);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'fix-form-actions';
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'fix-form-send';
+    sendBtn.textContent = 'Send';
+    const resultEl = document.createElement('span');
+    resultEl.className = 'fix-form-result';
+    actions.appendChild(sendBtn);
+    form.appendChild(actions);
+    form.appendChild(resultEl);
+
+    sendBtn.addEventListener('click', async () => {
+      sendBtn.disabled = true;
+      resultEl.className = 'fix-form-result';
+      resultEl.textContent = 'Sending…';
+
+      const args = {};
+      for (const [key, input] of Object.entries(inputs)) {
+        if (input.value.trim() === '') continue;
+        args[key] = input.type === 'number' ? Number(input.value) : input.value;
+      }
+
+      try {
+        const res = await fetch('/api/tools/call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: tc.name, arguments: args }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        resultEl.className = 'fix-form-result ' + (data.isError ? 'err' : 'ok');
+        resultEl.textContent = data.result;
+
+        conversationHistory.push({
+          role: 'user',
+          content: `[Manual correction] I ran ${tc.name} directly with ${JSON.stringify(args)}. Result: ${data.result}`,
+        });
+      } catch (e) {
+        resultEl.className = 'fix-form-result err';
+        resultEl.textContent = 'Error: ' + e.message;
+      }
+      sendBtn.disabled = false;
+    });
+
+    pillWrap.appendChild(form);
   }
 
   function appendThinking() {

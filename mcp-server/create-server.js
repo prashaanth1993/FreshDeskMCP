@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as dotenv from 'dotenv';
-import { applyMineFilter, buildTools, freshdeskFetch, loadOAS, webSearch } from './tools.js';
+import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, webSearch } from './tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH  = join(__dirname, '..', '.env');
@@ -57,15 +57,23 @@ export function createFreshdeskServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args = {} } = request.params;
     try {
-      let result;
-      if (name === 'web_search') {
-        result = await webSearch(args.query);
-      } else {
-        const tool = allTools.find(t => t.name === name);
-        if (!tool) throw new Error(`Unknown tool: ${name}`);
-        const effectiveArgs = applyMineFilter(name, args, FRESHDESK_AGENT_ID);
-        result = await freshdeskFetch(BASE_URL, AUTH, tool._meta, effectiveArgs);
+      const tool = name === 'web_search' ? WEB_SEARCH_TOOL : allTools.find(t => t.name === name);
+      if (!tool) throw new Error(`Unknown tool: ${name}`);
+
+      const effectiveArgs = name === 'web_search' ? args : applyMineFilter(name, args, FRESHDESK_AGENT_ID);
+
+      const missing = findMissingRequired(tool.inputSchema, effectiveArgs);
+      if (missing.length > 0) {
+        return {
+          content: [{ type: 'text', text: `Missing required parameter(s): ${missing.join(', ')}` }],
+          isError: true,
+        };
       }
+
+      const result = name === 'web_search'
+        ? await webSearch(effectiveArgs.query)
+        : await freshdeskFetch(BASE_URL, AUTH, tool._meta, effectiveArgs);
+
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (e) {
       return { content: [{ type: 'text', text: `Error: ${e.message}` }], isError: true };

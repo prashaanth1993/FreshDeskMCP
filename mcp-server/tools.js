@@ -93,6 +93,19 @@ export function applyMineFilter(toolName, args, agentId) {
 }
 
 /**
+ * Return the subset of inputSchema.required keys missing from args (undefined, null, or '').
+ * Used to reject a tool call up front with a clear message instead of sending a
+ * malformed request (e.g. an unsubstituted `{ticket_id}` path placeholder).
+ */
+export function findMissingRequired(inputSchema, args) {
+  const required = inputSchema?.required || [];
+  return required.filter((key) => {
+    const value = args?.[key];
+    return value === undefined || value === null || value === '';
+  });
+}
+
+/**
  * Split args into { url, body } given the operation's _meta classification.
  * - Path params: substituted into urlPath.
  * - Query params: appended as ?key=value.
@@ -191,7 +204,7 @@ export async function freshdeskFetch(baseUrl, auth, meta, args, opts = {}) {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Freshdesk ${res.status} ${meta.method} ${meta.path}: ${text}`);
+      throw new Error(`Freshdesk ${res.status} ${meta.method} ${url}: ${text}`);
     }
     if (res.status === 204) return null;
     const ct = res.headers.get('content-type') || '';

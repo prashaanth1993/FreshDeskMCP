@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from 'js-yaml';
-import { applyMineFilter, buildRequest, buildTools, buildUrl } from '../tools.js';
+import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch } from '../tools.js';
 
 // Inline minimal OAS — no file I/O or network needed
 const SAMPLE_OAS = load(`
@@ -279,4 +279,47 @@ test('buildRequest omits body when POST has no body args provided', () => {
   const create = tools.find(t => t.name === 'create_ticket');
   const { body } = buildRequest('https://acme.freshdesk.com/api/v2', create._meta, {});
   assert.strictEqual(body, null);
+});
+
+test('findMissingRequired returns [] when all required args are present', () => {
+  const schema = { required: ['ticket_id'], properties: { ticket_id: {} } };
+  assert.deepStrictEqual(findMissingRequired(schema, { ticket_id: 42 }), []);
+});
+
+test('findMissingRequired reports keys absent from args', () => {
+  const schema = { required: ['subject', 'status'], properties: {} };
+  assert.deepStrictEqual(findMissingRequired(schema, { subject: 'Hi' }), ['status']);
+});
+
+test('findMissingRequired treats null and empty-string as missing', () => {
+  const schema = { required: ['ticket_id'], properties: {} };
+  assert.deepStrictEqual(findMissingRequired(schema, { ticket_id: null }), ['ticket_id']);
+  assert.deepStrictEqual(findMissingRequired(schema, { ticket_id: '' }), ['ticket_id']);
+});
+
+test('findMissingRequired returns [] when schema has no required array', () => {
+  assert.deepStrictEqual(findMissingRequired({ properties: {} }, {}), []);
+});
+
+test('freshdeskFetch error message shows the substituted URL, not the raw {placeholder} path', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 404,
+    headers: { get: () => null },
+    text: async () => '{"description":"Not found"}',
+  });
+  try {
+    const meta = { method: 'GET', path: '/tickets/{ticket_id}', pathParams: ['ticket_id'], queryParams: [], bodyParams: [] };
+    await assert.rejects(
+      () => freshdeskFetch('https://acme.freshdesk.com/api/v2', 'Basic x', meta, { ticket_id: 1 }),
+      (err) => {
+        assert.match(err.message, /\/tickets\/1\b/);
+        assert.doesNotMatch(err.message, /\{ticket_id\}/);
+        return true;
+      }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

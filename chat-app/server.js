@@ -51,7 +51,7 @@ async function reinitMCP() {
 
 async function callMCPTool(name, args) {
   const result = await mcpClient.callTool({ name, arguments: args });
-  return result.content[0]?.text || '';
+  return { text: result.content[0]?.text || '', isError: Boolean(result.isError) };
 }
 
 // ── Ollama fetch with timeout and clear error ─────────────────────────────────
@@ -142,7 +142,30 @@ app.post('/api/env', async (req, res) => {
 });
 
 app.get('/api/tools', (_req, res) => {
-  res.json(mcpTools.map(t => ({ name: t.function.name, description: t.function.description })));
+  res.json(mcpTools.map(t => ({
+    name: t.function.name,
+    description: t.function.description,
+    inputSchema: t.function.parameters,
+  })));
+});
+
+app.post('/api/tools/call', async (req, res) => {
+  const { name, arguments: args = {} } = req.body || {};
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'name must be a non-empty string' });
+  }
+  if (!mcpTools.some(t => t.function.name === name)) {
+    return res.status(404).json({ error: `Unknown tool: ${name}` });
+  }
+
+  log('INFO', `manual tool call  name=${name} args=${JSON.stringify(args)}`);
+  try {
+    const { text, isError } = await callMCPTool(name, args);
+    res.json({ result: text, isError });
+  } catch (e) {
+    log('WARN', `manual tool call failed  name=${name} error=${e.message}`);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -158,6 +181,9 @@ app.post('/api/chat', async (req, res) => {
 
   const history = [...messages];
   const toolLog = [];
+  const MAX_CONSECUTIVE_FAILURES = 2;
+  let consecutiveFailures = 0;
+  let lastError = '';
 
   try {
     for (let round = 0; round < 10; round++) {
@@ -180,16 +206,34 @@ app.post('/api/chat', async (req, res) => {
         const { name, arguments: args } = tc.function;
         log('INFO', `[${reqId}] tool call  name=${name} args=${JSON.stringify(args)}`);
         const t1 = Date.now();
-        let result;
+        let result, failed;
         try {
-          result = await callMCPTool(name, args);
-          log('INFO', `[${reqId}] tool ok    name=${name} ms=${Date.now() - t1} result_len=${result.length}`);
+          const { text, isError } = await callMCPTool(name, args);
+          result = text;
+          failed = isError;
+          log('INFO', `[${reqId}] tool ${isError ? 'err' : 'ok'}    name=${name} ms=${Date.now() - t1} result_len=${result.length}`);
         } catch (e) {
           result = `Tool error: ${e.message}`;
+          failed = true;
           log('WARN', `[${reqId}] tool fail  name=${name} error=${e.message}`);
         }
-        toolLog.push({ name, args, result });
+        toolLog.push({ name, args, result, isError: Boolean(failed) });
         history.push({ role: 'tool', content: result });
+
+        if (failed) {
+          consecutiveFailures++;
+          lastError = result;
+        } else {
+          consecutiveFailures = 0;
+        }
+
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          log('WARN', `[${reqId}] stopping after ${consecutiveFailures} consecutive tool failures`);
+          return res.json({
+            message: `I hit repeated tool errors and stopped rather than keep guessing. Last error: ${lastError}`,
+            tool_calls: toolLog,
+          });
+        }
       }
     }
 
@@ -202,6 +246,21 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+const MAX_PORT_ATTEMPTS = 10;
+
+function listenWithPortFallback(startPort, attemptsLeft) {
+  const server = app.listen(startPort, () => log('INFO', `Freshdesk AI ready at http://localhost:${startPort}`));
+  server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE' && attemptsLeft > 0) {
+      log('WARN', `Port ${startPort} in use, trying ${startPort + 1}`);
+      listenWithPortFallback(startPort + 1, attemptsLeft - 1);
+    } else {
+      log('ERROR', `Server failed to start: ${e.message}`);
+      process.exit(1);
+    }
+  });
+}
+
 initMCP().then(() => {
-  app.listen(PORT, () => log('INFO', `Freshdesk AI ready at http://localhost:${PORT}`));
+  listenWithPortFallback(PORT, MAX_PORT_ATTEMPTS);
 }).catch(e => { log('ERROR', `MCP init failed: ${e.message}`); process.exit(1); });
