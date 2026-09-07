@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as dotenv from 'dotenv';
-import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, normalizeTicketListing, webSearch } from './tools.js';
+import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, normalizeTicketListing, shrinkForModel, webSearch } from './tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH  = join(__dirname, '..', '.env');
@@ -78,7 +78,7 @@ export function createFreshdeskServer() {
         ? await webSearch(effectiveArgs.query)
         : await freshdeskFetch(BASE_URL, AUTH, tool._meta, effectiveArgs);
 
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(shrinkForModel(result), null, 2) }] };
     } catch (e) {
       return { content: [{ type: 'text', text: `Error: ${e.message}` }], isError: true };
     }

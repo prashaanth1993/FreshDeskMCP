@@ -283,3 +283,43 @@ export async function webSearch(query) {
 export function loadOAS(oasPath) {
   return load(readFileSync(oasPath, 'utf8'));
 }
+
+const SHRINK_SIZE_THRESHOLD = 8000; // chars — only shrink if the raw JSON would exceed this
+const MAX_STRING_FIELD_LEN = 500;
+const MAX_ARRAY_ITEMS = 25;
+
+function shrinkValue(value, depth) {
+  if (depth > 6) return value;
+  if (typeof value === 'string') {
+    return value.length > MAX_STRING_FIELD_LEN
+      ? `${value.slice(0, MAX_STRING_FIELD_LEN)}… [truncated, ${value.length} chars total]`
+      : value;
+  }
+  if (Array.isArray(value)) {
+    const shrunk = value.slice(0, MAX_ARRAY_ITEMS).map((v) => shrinkValue(v, depth + 1));
+    if (value.length > MAX_ARRAY_ITEMS) {
+      shrunk.push(`… ${value.length - MAX_ARRAY_ITEMS} more item(s) not shown`);
+    }
+    return shrunk;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shrinkValue(v, depth + 1)]));
+  }
+  return value;
+}
+
+/**
+ * Cap the size of a Freshdesk API response before it's serialized and handed to a
+ * caller. A single ticket/contact lookup is left completely untouched — full detail
+ * (e.g. a ticket's description) matters there. But a list-style response (many
+ * tickets/contacts/articles, each carrying large HTML fields) can reach hundreds of
+ * KB, silently blowing past an LLM's context window and producing garbled or
+ * hallucinated summaries. Only kicks in when the raw JSON exceeds ~8KB, and then
+ * trims any string field over 500 chars and caps arrays at 25 items.
+ */
+export function shrinkForModel(result) {
+  if (result === null || result === undefined) return result;
+  const raw = JSON.stringify(result);
+  if (raw.length <= SHRINK_SIZE_THRESHOLD) return result;
+  return shrinkValue(result, 0);
+}

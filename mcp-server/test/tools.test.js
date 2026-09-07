@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from 'js-yaml';
-import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch, normalizeTicketListing } from '../tools.js';
+import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch, normalizeTicketListing, shrinkForModel } from '../tools.js';
 
 // Inline minimal OAS — no file I/O or network needed
 const SAMPLE_OAS = load(`
@@ -363,4 +363,43 @@ test('normalizeTicketListing preserves page when redirecting', () => {
 test('normalizeTicketListing leaves non-ticket-listing tools untouched', () => {
   const result = normalizeTicketListing('get_ticket', { ticket_id: 1 });
   assert.deepStrictEqual(result, { toolName: 'get_ticket', args: { ticket_id: 1 } });
+});
+
+test('shrinkForModel leaves small results completely untouched', () => {
+  const ticket = { id: 1, subject: 'Hi', description: 'a'.repeat(400) };
+  assert.deepStrictEqual(shrinkForModel(ticket), ticket);
+});
+
+test('shrinkForModel leaves a single large-but-under-threshold field alone', () => {
+  const ticket = { id: 1, description: 'x'.repeat(600) };
+  assert.deepStrictEqual(shrinkForModel(ticket), ticket);
+});
+
+test('shrinkForModel truncates long string fields once overall size exceeds the threshold', () => {
+  const bigDescription = 'x'.repeat(9000);
+  const result = shrinkForModel({ id: 1, description: bigDescription });
+  assert.ok(result.description.length < bigDescription.length);
+  assert.match(result.description, /truncated, 9000 chars total/);
+});
+
+test('shrinkForModel caps array length and adds a "more not shown" marker', () => {
+  const items = Array.from({ length: 40 }, (_, i) => ({ id: i, subject: 'x'.repeat(300) }));
+  const result = shrinkForModel({ results: items });
+  assert.strictEqual(result.results.length, 26); // 25 items + 1 marker string
+  assert.strictEqual(result.results[25], '… 15 more item(s) not shown');
+});
+
+test('shrinkForModel recurses into nested objects and arrays', () => {
+  const items = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    nested: { blob: 'y'.repeat(700) },
+  }));
+  const result = shrinkForModel({ page: { results: items } });
+  assert.strictEqual(result.page.results.length, 26);
+  assert.match(result.page.results[0].nested.blob, /truncated, 700 chars total/);
+});
+
+test('shrinkForModel passes through null/undefined', () => {
+  assert.strictEqual(shrinkForModel(null), null);
+  assert.strictEqual(shrinkForModel(undefined), undefined);
 });

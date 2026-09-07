@@ -30,16 +30,26 @@ function log(level, ...parts) {
 let mcpClient;
 let mcpTools = [];
 
+// This chat assistant is read-only by design: it finds/summarizes tickets and
+// searches the KB, never creates/updates/deletes anything. Restricting the tool
+// set the LLM ever sees is a stronger guarantee than any prompt wording or
+// post-hoc guardrail — a tool it was never given can't be hallucinated into a call.
+const READ_ONLY_PATTERN = /^(list_|get_|search_|autocomplete_)/;
+function isReadOnlyTool(name) {
+  return name === 'web_search' || READ_ONLY_PATTERN.test(name);
+}
+
 async function initMCP() {
   const transport = new StdioClientTransport({ command: 'node', args: [MCP_SERVER] });
   mcpClient = new Client({ name: 'chat-app', version: '1.0.0' }, { capabilities: {} });
   await mcpClient.connect(transport);
   const { tools } = await mcpClient.listTools();
-  mcpTools = tools.map(t => ({
+  const readOnlyTools = tools.filter(t => isReadOnlyTool(t.name));
+  mcpTools = readOnlyTools.map(t => ({
     type: 'function',
     function: { name: t.name, description: t.description, parameters: t.inputSchema },
   }));
-  log('INFO', `MCP connected — ${mcpTools.length} tools available`);
+  log('INFO', `MCP connected — ${mcpTools.length}/${tools.length} read-only tools available`);
 }
 
 async function reinitMCP() {
