@@ -310,8 +310,10 @@
     'To find similar resolved issues, use search_tickets with status:4.\n' +
     'To look for KB articles, use search_kb.\n' +
     'To list or fetch tickets (e.g. "my open tickets", "all open tickets", "tickets assigned to agent X"), ' +
-    'use list_tickets or search_tickets — pass mine: true to filter to the current agent when the user says ' +
-    '"my"/"mine" and an agent ID is configured, or filter/query params otherwise. These tools always exist; ' +
+    'use search_tickets with a query like "agent_id:<id> AND status:2" (status: 2=Open 3=Pending 4=Resolved ' +
+    '5=Closed) — pass mine: true instead when the user says "my"/"mine" and an agent ID is configured. ' +
+    'list_tickets only accepts a named filter preset (e.g. new_and_my_open, open, overdue) — it does NOT ' +
+    'accept agent_id or status as query params; use search_tickets for those. These tools always exist; ' +
     'never tell the user ticket listing is unsupported.\n' +
     'Use web_search only if Freshdesk data is insufficient.\n' +
     'Only call a tool that creates, updates, or deletes something (e.g. update_ticket, update_conversation, ' +

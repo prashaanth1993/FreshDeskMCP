@@ -20,7 +20,11 @@ paths:
   /tickets:
     get:
       operationId: list_tickets
-      summary: List recent tickets, optionally filtered by preset
+      summary: >
+        List tickets using a named filter PRESET only (all_tickets, new_and_my_open,
+        open, resolved, overdue, due_today, pending, watching). Does NOT accept
+        agent_id, status, or any other field as a query param — use search_tickets
+        for those (e.g. "my tickets", "agent's open tickets", filtering by status).
       parameters:
         - { name: filter, in: query, schema: { type: string }, description: "Filter preset: all_tickets, new_and_my_open, open, resolved, overdue, due_today, pending, watching" }
         - { name: order_by, in: query, schema: { type: string }, description: "Sort field: created_at, updated_at, priority, status" }
@@ -205,7 +209,11 @@ paths:
   /search/tickets:
     get:
       operationId: search_tickets
-      summary: Search tickets by field filter
+      summary: >
+        Search/filter tickets by any field — THE tool for "my tickets", "agent's
+        open tickets", or filtering by status/priority/tag. Query examples:
+        "agent_id:50000418897 AND status:2" or "status:4". Status: 2=Open
+        3=Pending 4=Resolved 5=Closed. Priority: 1=Low 2=Medium 3=High 4=Urgent.
       parameters:
         - name: query
           in: query

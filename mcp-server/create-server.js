@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as dotenv from 'dotenv';
-import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, webSearch } from './tools.js';
+import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, normalizeTicketListing, webSearch } from './tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH  = join(__dirname, '..', '.env');
@@ -55,8 +55,12 @@ export function createFreshdeskServer() {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: publicTools }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args = {} } = request.params;
+    const { name: requestedName, arguments: requestedArgs = {} } = request.params;
     try {
+      const { toolName: name, args } = requestedName === 'web_search'
+        ? { toolName: requestedName, args: requestedArgs }
+        : normalizeTicketListing(requestedName, requestedArgs);
+
       const tool = name === 'web_search' ? WEB_SEARCH_TOOL : allTools.find(t => t.name === name);
       if (!tool) throw new Error(`Unknown tool: ${name}`);
 

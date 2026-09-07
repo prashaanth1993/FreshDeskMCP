@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from 'js-yaml';
-import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch } from '../tools.js';
+import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch, normalizeTicketListing } from '../tools.js';
 
 // Inline minimal OAS — no file I/O or network needed
 const SAMPLE_OAS = load(`
@@ -322,4 +322,45 @@ test('freshdeskFetch error message shows the substituted URL, not the raw {place
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('normalizeTicketListing passes through list_tickets with only a filter preset', () => {
+  const result = normalizeTicketListing('list_tickets', { filter: 'open' });
+  assert.deepStrictEqual(result, { toolName: 'list_tickets', args: { filter: 'open' } });
+});
+
+test('normalizeTicketListing passes through search_tickets with only a query', () => {
+  const result = normalizeTicketListing('search_tickets', { query: 'status:4' });
+  assert.deepStrictEqual(result, { toolName: 'search_tickets', args: { query: 'status:4' } });
+});
+
+test('normalizeTicketListing redirects list_tickets with agent_id/status to search_tickets', () => {
+  const result = normalizeTicketListing('list_tickets', { agent_id: 50000418897, status: 'open' });
+  assert.strictEqual(result.toolName, 'search_tickets');
+  assert.strictEqual(result.args.query, 'agent_id:50000418897 AND status:2');
+});
+
+test('normalizeTicketListing normalizes status and priority words to Freshdesk numeric codes', () => {
+  const result = normalizeTicketListing('list_tickets', { status: 'resolved', priority: 'urgent' });
+  assert.strictEqual(result.args.query, 'status:4 AND priority:4');
+});
+
+test('normalizeTicketListing leaves an already-numeric status untouched', () => {
+  const result = normalizeTicketListing('list_tickets', { status: 2 });
+  assert.strictEqual(result.args.query, 'status:2');
+});
+
+test('normalizeTicketListing merges flat fields with an existing search_tickets query', () => {
+  const result = normalizeTicketListing('search_tickets', { agent_id: 5, query: 'tag:billing' });
+  assert.strictEqual(result.args.query, 'agent_id:5 AND (tag:billing)');
+});
+
+test('normalizeTicketListing preserves page when redirecting', () => {
+  const result = normalizeTicketListing('list_tickets', { status: 'open', page: 2 });
+  assert.strictEqual(result.args.page, 2);
+});
+
+test('normalizeTicketListing leaves non-ticket-listing tools untouched', () => {
+  const result = normalizeTicketListing('get_ticket', { ticket_id: 1 });
+  assert.deepStrictEqual(result, { toolName: 'get_ticket', args: { ticket_id: 1 } });
 });

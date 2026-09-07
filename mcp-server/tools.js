@@ -92,6 +92,50 @@ export function applyMineFilter(toolName, args, agentId) {
   return rest;
 }
 
+const TICKET_STATUS_WORDS = { open: 2, pending: 3, resolved: 4, closed: 5 };
+const TICKET_PRIORITY_WORDS = { low: 1, medium: 2, high: 3, urgent: 4 };
+
+function normalizeWordOrCode(value, wordMap) {
+  if (value === undefined) return undefined;
+  if (typeof value === 'number') return value;
+  const key = String(value).trim().toLowerCase();
+  return key in wordMap ? wordMap[key] : value;
+}
+
+/**
+ * Models routinely call list_tickets (or search_tickets without a query) with flat
+ * agent_id/status/priority/tag fields — Freshdesk's real /tickets list endpoint doesn't
+ * accept those, and search_tickets needs a composed "field:value AND field:value" query
+ * string instead. Rather than rely on a model correctly picking search_tickets AND
+ * composing that query DSL itself (empirically unreliable across models), detect the
+ * flat shape and do the translation ourselves — redirecting list_tickets -> search_tickets
+ * when needed, and normalizing common English status/priority words (e.g. "open") to
+ * Freshdesk's numeric codes, since models frequently send the word instead of the code.
+ * Returns { toolName, args } unchanged when none of these flat fields are present.
+ */
+export function normalizeTicketListing(toolName, args) {
+  if (toolName !== 'list_tickets' && toolName !== 'search_tickets') return { toolName, args };
+  if (!args) return { toolName, args };
+
+  const { agent_id, status, priority, tag, query, page } = args;
+  if (agent_id === undefined && status === undefined && priority === undefined && tag === undefined) {
+    return { toolName, args };
+  }
+
+  const parts = [];
+  if (agent_id !== undefined) parts.push(`agent_id:${agent_id}`);
+  const normStatus = normalizeWordOrCode(status, TICKET_STATUS_WORDS);
+  if (normStatus !== undefined) parts.push(`status:${normStatus}`);
+  const normPriority = normalizeWordOrCode(priority, TICKET_PRIORITY_WORDS);
+  if (normPriority !== undefined) parts.push(`priority:${normPriority}`);
+  if (tag !== undefined) parts.push(`tag:${tag}`);
+
+  const composed = query ? `${parts.join(' AND ')} AND (${query})` : parts.join(' AND ');
+  const newArgs = { query: composed };
+  if (page !== undefined) newArgs.page = page;
+  return { toolName: 'search_tickets', args: newArgs };
+}
+
 /**
  * Return the subset of inputSchema.required keys missing from args (undefined, null, or '').
  * Used to reject a tool call up front with a clear message instead of sending a
