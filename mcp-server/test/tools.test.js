@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from 'js-yaml';
-import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch, normalizeTicketListing, shrinkForModel } from '../tools.js';
+import { applyMineFilter, buildRequest, buildTools, buildUrl, findMissingRequired, freshdeskFetch, normalizeTicketListing, shrinkForModel, stripUnknownArgs } from '../tools.js';
 
 // Inline minimal OAS — no file I/O or network needed
 const SAMPLE_OAS = load(`
@@ -402,4 +402,23 @@ test('shrinkForModel recurses into nested objects and arrays', () => {
 test('shrinkForModel passes through null/undefined', () => {
   assert.strictEqual(shrinkForModel(null), null);
   assert.strictEqual(shrinkForModel(undefined), undefined);
+});
+
+test('stripUnknownArgs drops a field the model invented that is not in the schema', () => {
+  const schema = { properties: { query: {}, page: {} } };
+  const result = stripUnknownArgs(schema, { query: 'status:4', page: 1, per_page: 30 });
+  assert.deepStrictEqual(result, { query: 'status:4', page: 1 });
+});
+
+test('stripUnknownArgs keeps all args when every key is declared', () => {
+  const schema = { properties: { ticket_id: {} } };
+  assert.deepStrictEqual(stripUnknownArgs(schema, { ticket_id: 5 }), { ticket_id: 5 });
+});
+
+test('stripUnknownArgs returns {} for a schema with no properties', () => {
+  assert.deepStrictEqual(stripUnknownArgs({}, { foo: 1 }), {});
+});
+
+test('stripUnknownArgs handles undefined args', () => {
+  assert.deepStrictEqual(stripUnknownArgs({ properties: { a: {} } }, undefined), {});
 });

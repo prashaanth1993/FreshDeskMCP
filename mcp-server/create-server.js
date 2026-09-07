@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as dotenv from 'dotenv';
-import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, normalizeTicketListing, shrinkForModel, webSearch } from './tools.js';
+import { applyMineFilter, buildTools, findMissingRequired, freshdeskFetch, loadOAS, normalizeTicketListing, shrinkForModel, stripUnknownArgs, webSearch } from './tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH  = join(__dirname, '..', '.env');
@@ -64,7 +64,8 @@ export function createFreshdeskServer() {
       const tool = name === 'web_search' ? WEB_SEARCH_TOOL : allTools.find(t => t.name === name);
       if (!tool) throw new Error(`Unknown tool: ${name}`);
 
-      const effectiveArgs = name === 'web_search' ? args : applyMineFilter(name, args, FRESHDESK_AGENT_ID);
+      const mineFilteredArgs = name === 'web_search' ? args : applyMineFilter(name, args, FRESHDESK_AGENT_ID);
+      const effectiveArgs = stripUnknownArgs(tool.inputSchema, mineFilteredArgs);
 
       const missing = findMissingRequired(tool.inputSchema, effectiveArgs);
       if (missing.length > 0) {

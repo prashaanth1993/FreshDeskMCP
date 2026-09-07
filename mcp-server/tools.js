@@ -323,3 +323,16 @@ export function shrinkForModel(result) {
   if (raw.length <= SHRINK_SIZE_THRESHOLD) return result;
   return shrinkValue(result, 0);
 }
+
+/**
+ * Drop any arg the model invented that isn't in the tool's declared inputSchema
+ * properties. Freshdesk's API is strict — an unrecognized field (e.g. a model adding
+ * per_page to search_tickets, which only accepts query/page) causes a 400 that has
+ * nothing to do with the actually-valid part of the call. Since buildTools generates
+ * inputSchema directly from the real OAS, anything not listed there was never a real
+ * parameter to begin with.
+ */
+export function stripUnknownArgs(inputSchema, args) {
+  const known = new Set(Object.keys(inputSchema?.properties || {}));
+  return Object.fromEntries(Object.entries(args || {}).filter(([key]) => known.has(key)));
+}
