@@ -597,8 +597,14 @@
       if (data.error) {
         appendMessage('assistant', 'Error: ' + data.error, []);
       } else {
-        appendMessage('assistant', data.message, data.tool_calls || []);
-        conversationHistory.push({ role: 'assistant', content: data.message });
+        // The model occasionally finishes a tool-calling round with an empty content
+        // string even when tool calls succeeded (e.g. it fetched real data but never
+        // wrote a summary of it) — show a clear fallback instead of a blank bubble.
+        const messageText = (data.message || '').trim() ||
+          'No response text was generated for this request, though the tool call(s) below may have ' +
+          'returned useful data. Try rephrasing, or ask again.';
+        appendMessage('assistant', messageText, data.tool_calls || []);
+        conversationHistory.push({ role: 'assistant', content: messageText });
       }
     } catch (e) {
       removeThinking();
