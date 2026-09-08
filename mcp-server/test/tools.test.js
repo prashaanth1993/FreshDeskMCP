@@ -360,6 +360,14 @@ test('normalizeTicketListing preserves page when redirecting', () => {
   assert.strictEqual(result.args.page, 2);
 });
 
+test('normalizeTicketListing preserves mine through the redirect so applyMineFilter still scopes it', () => {
+  const redirected = normalizeTicketListing('search_tickets', { mine: true, status: '2', page: 1 });
+  assert.strictEqual(redirected.args.mine, true);
+  const finalArgs = applyMineFilter(redirected.toolName, redirected.args, '50000418897');
+  assert.strictEqual(finalArgs.query, 'agent_id:50000418897 AND (status:2)');
+  assert.strictEqual(finalArgs.mine, undefined);
+});
+
 test('normalizeTicketListing leaves non-ticket-listing tools untouched', () => {
   const result = normalizeTicketListing('get_ticket', { ticket_id: 1 });
   assert.deepStrictEqual(result, { toolName: 'get_ticket', args: { ticket_id: 1 } });

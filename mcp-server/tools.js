@@ -117,7 +117,7 @@ export function normalizeTicketListing(toolName, args) {
   if (toolName !== 'list_tickets' && toolName !== 'search_tickets') return { toolName, args };
   if (!args) return { toolName, args };
 
-  const { agent_id, status, priority, tag, query, page } = args;
+  const { agent_id, status, priority, tag, query, page, mine } = args;
   if (agent_id === undefined && status === undefined && priority === undefined && tag === undefined) {
     return { toolName, args };
   }
@@ -133,6 +133,12 @@ export function normalizeTicketListing(toolName, args) {
   const composed = query ? `${parts.join(' AND ')} AND (${query})` : parts.join(' AND ');
   const newArgs = { query: composed };
   if (page !== undefined) newArgs.page = page;
+  // Preserve `mine` through the redirect — applyMineFilter runs after this and needs
+  // it to scope the query to the configured agent. Dropping it here silently turned
+  // "my open tickets" into "every open ticket account-wide", twice in a row (once via
+  // list_tickets, once via search_tickets), which previously confused the model into
+  // giving up with no summary at all.
+  if (mine !== undefined) newArgs.mine = mine;
   return { toolName: 'search_tickets', args: newArgs };
 }
 
