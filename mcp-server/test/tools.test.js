@@ -385,8 +385,8 @@ test('shrinkForModel truncates long string fields once overall size exceeds the 
 test('shrinkForModel caps array length and adds a "more not shown" marker', () => {
   const items = Array.from({ length: 40 }, (_, i) => ({ id: i, subject: 'x'.repeat(300) }));
   const result = shrinkForModel({ results: items });
-  assert.strictEqual(result.results.length, 26); // 25 items + 1 marker string
-  assert.strictEqual(result.results[25], '… 15 more item(s) not shown');
+  assert.strictEqual(result.results.length, 11); // 10 items + 1 marker string
+  assert.strictEqual(result.results[10], '… 30 more item(s) not shown');
 });
 
 test('shrinkForModel recurses into nested objects and arrays', () => {
@@ -395,8 +395,15 @@ test('shrinkForModel recurses into nested objects and arrays', () => {
     nested: { blob: 'y'.repeat(700) },
   }));
   const result = shrinkForModel({ page: { results: items } });
-  assert.strictEqual(result.page.results.length, 26);
+  assert.strictEqual(result.page.results.length, 11);
   assert.match(result.page.results[0].nested.blob, /truncated, 700 chars total/);
+});
+
+test('shrinkForModel caps object key count and adds a marker key', () => {
+  const wide = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`field_${i}`, i]));
+  const result = shrinkForModel({ id: 1, custom_fields: wide, padding: 'z'.repeat(9000) });
+  assert.strictEqual(Object.keys(result.custom_fields).length, 16); // 15 kept + 1 marker
+  assert.strictEqual(result.custom_fields._more_fields_not_shown, 5);
 });
 
 test('shrinkForModel passes through null/undefined', () => {

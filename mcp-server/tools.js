@@ -285,8 +285,9 @@ export function loadOAS(oasPath) {
 }
 
 const SHRINK_SIZE_THRESHOLD = 8000; // chars — only shrink if the raw JSON would exceed this
-const MAX_STRING_FIELD_LEN = 500;
-const MAX_ARRAY_ITEMS = 25;
+const MAX_STRING_FIELD_LEN = 200;
+const MAX_ARRAY_ITEMS = 10;
+const MAX_OBJECT_KEYS = 15;
 
 function shrinkValue(value, depth) {
   if (depth > 6) return value;
@@ -303,7 +304,12 @@ function shrinkValue(value, depth) {
     return shrunk;
   }
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shrinkValue(v, depth + 1)]));
+    const entries = Object.entries(value);
+    const kept = entries.slice(0, MAX_OBJECT_KEYS).map(([k, v]) => [k, shrinkValue(v, depth + 1)]);
+    if (entries.length > MAX_OBJECT_KEYS) {
+      kept.push(['_more_fields_not_shown', entries.length - MAX_OBJECT_KEYS]);
+    }
+    return Object.fromEntries(kept);
   }
   return value;
 }
@@ -315,7 +321,9 @@ function shrinkValue(value, depth) {
  * tickets/contacts/articles, each carrying large HTML fields) can reach hundreds of
  * KB, silently blowing past an LLM's context window and producing garbled or
  * hallucinated summaries. Only kicks in when the raw JSON exceeds ~8KB, and then
- * trims any string field over 500 chars and caps arrays at 25 items.
+ * trims any string field over 200 chars, caps arrays at 10 items, and caps any
+ * single object at 15 keys (e.g. a ticket's custom_fields, which alone can carry
+ * dozens of account-specific fields that add up fast across many list items).
  */
 export function shrinkForModel(result) {
   if (result === null || result === undefined) return result;

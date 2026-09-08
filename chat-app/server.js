@@ -127,19 +127,27 @@ app.get('/api/env-status', (_req, res) => {
 
 app.post('/api/env', async (req, res) => {
   const { domain, apiKey, agentId } = req.body || {};
-  if (!domain || !apiKey) return res.status(400).json({ error: 'domain and apiKey are required' });
+  // A blank apiKey/agentId means "keep the current value" (matches the API key
+  // field's "leave blank to keep current" placeholder) — previously this silently
+  // required re-entering the key on every save, and always dropped agentId since
+  // there is no UI field for it, breaking the mine:true shortcut on every save.
+  const effectiveApiKey  = apiKey  || process.env.FRESHDESK_API_KEY;
+  const effectiveAgentId = agentId || process.env.FRESHDESK_AGENT_ID;
+  if (!domain || !effectiveApiKey) {
+    return res.status(400).json({ error: 'domain is required, and apiKey is required the first time it is set' });
+  }
 
   const envPath = join(__dirname, '..', '.env');
   try {
-    const agentLine = agentId ? `\nFRESHDESK_AGENT_ID=${agentId}` : '';
-    writeFileSync(envPath, `FRESHDESK_DOMAIN=${domain}\nFRESHDESK_API_KEY=${apiKey}${agentLine}\n`);
+    const agentLine = effectiveAgentId ? `\nFRESHDESK_AGENT_ID=${effectiveAgentId}` : '';
+    writeFileSync(envPath, `FRESHDESK_DOMAIN=${domain}\nFRESHDESK_API_KEY=${effectiveApiKey}${agentLine}\n`);
   } catch (e) {
     return res.status(500).json({ error: `Could not write .env: ${e.message}` });
   }
 
   process.env.FRESHDESK_DOMAIN  = domain;
-  process.env.FRESHDESK_API_KEY = apiKey;
-  if (agentId) process.env.FRESHDESK_AGENT_ID = agentId;
+  process.env.FRESHDESK_API_KEY = effectiveApiKey;
+  if (effectiveAgentId) process.env.FRESHDESK_AGENT_ID = effectiveAgentId;
 
   try {
     await reinitMCP();

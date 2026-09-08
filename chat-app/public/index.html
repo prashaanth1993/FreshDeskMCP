@@ -51,6 +51,7 @@
       font-size: 12px;
       font-family: inherit;
       font-weight: 600;
+      line-height: 1.4;
       padding: 4px 8px;
       background: #0f172a;
       border-radius: 4px;
@@ -58,6 +59,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex-shrink: 0;
     }
     .sidebar-footer { margin-top: auto; font-size: 11px; color: #64748b; line-height: 1.5; }
     .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -318,11 +320,17 @@
     'accept agent_id or status as query params; use search_tickets for those. These tools always exist; ' +
     'never tell the user ticket listing is unsupported.\n' +
     'Use web_search only if Freshdesk data is insufficient.\n' +
-    'Only call a tool that creates, updates, or deletes something (e.g. update_ticket, update_conversation, ' +
-    'delete_*) when the user has explicitly asked you to make that change. Never invent one to "try something" ' +
-    'after a read-only call fails or as a workaround.\n' +
+    'This assistant is READ-ONLY: you only have list/get/search tools, and there is no way to create, update, ' +
+    'delete, reply to, merge, or otherwise change anything in Freshdesk. If the user asks you to do any of ' +
+    'that (e.g. "delete this ticket", "update the status", "reply to the customer", "merge these contacts"), ' +
+    'do not attempt it, do not say "I will proceed" or similar, and never leave an empty response. Instead, ' +
+    'clearly state in your first sentence that you cannot make changes — you can only look up and summarize ' +
+    'data — and if relevant, offer to draft the text they would need for someone to apply manually.\n' +
     'If a tool call returns an error, stop and explain the error in plain language, or ask the user for the ' +
     'missing information — do not guess arguments or try a different tool as a workaround.\n' +
+    'As soon as a tool call succeeds and returns the data needed to answer the user\'s question, stop calling ' +
+    'tools immediately and answer using that data. Do not call further tools "to double-check" or explore ' +
+    'unrelated data (e.g. field definitions, other resource types) once you already have what was asked for.\n' +
     'When drafting a response, make it clear, professional, and concise.\n' +
     'Present the draft as text the agent should review and modify before sending.\n' +
     'Never claim to send anything on behalf of the agent.';
@@ -552,6 +560,10 @@
     const model = document.getElementById('modelSelect').value;
     const text = input.value.trim();
 
+    // Enter-to-send bypasses the button's native disabled-click guard, so a second
+    // message typed while a request is still in flight could otherwise fire a
+    // concurrent /api/chat call against the same shared conversationHistory.
+    if (sendBtn.disabled) return;
     if (!text) return;
     if (!model) {
       alert('Please wait for models to load, or check that Ollama is running.');
@@ -650,7 +662,8 @@
     const status  = document.getElementById('settingsStatus');
 
     if (!domain) { status.className = 'settings-status err'; status.textContent = 'Domain is required'; return; }
-    if (!apiKey)  { status.className = 'settings-status err'; status.textContent = 'API key is required'; return; }
+    // apiKey may be blank here — that means "keep the current key", per the field's
+    // placeholder; the backend falls back to the existing value when it's omitted.
 
     btn.disabled = true;
     status.className = 'settings-status';
