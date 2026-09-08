@@ -323,6 +323,10 @@
     'To list or fetch tickets (e.g. "my open tickets", "all open tickets", "tickets assigned to agent X"), ' +
     'use search_tickets with a query like "agent_id:<id> AND status:2" (status: 2=Open 3=Pending 4=Resolved ' +
     '5=Closed) — pass mine: true instead when the user says "my"/"mine" and an agent ID is configured. ' +
+    'If the user\'s request names a status word — "open", "pending", "resolved", "closed" — you MUST include ' +
+    'the matching status:<code> in the query. This is not optional: never return an unfiltered list (e.g. ' +
+    'every ticket regardless of status) when the user asked for a specific status; that answers a different ' +
+    'question than the one asked.\n' +
     'list_tickets only accepts a named filter preset (e.g. new_and_my_open, open, overdue) — it does NOT ' +
     'accept agent_id or status as query params; use search_tickets for those. These tools always exist; ' +
     'never tell the user ticket listing is unsupported.\n' +

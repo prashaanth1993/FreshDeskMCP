@@ -295,6 +295,16 @@ const MAX_STRING_FIELD_LEN = 200;
 const MAX_ARRAY_ITEMS = 10;
 const MAX_OBJECT_KEYS = 15;
 
+// Fields worth keeping regardless of where they happen to fall in Freshdesk's key
+// order. Without this, a blind "first N keys" cap can silently discard `id` and
+// `subject` (Freshdesk puts them around position 21 and 16 on a ticket) while
+// keeping earlier, less useful fields like empty cc_emails/fwd_emails arrays —
+// leaving neither a model nor a human anything to actually identify a record by.
+const PRIORITY_KEYS = new Set([
+  'id', 'subject', 'name', 'title', 'email', 'status', 'priority', 'type',
+  'requester_id', 'responder_id', 'agent_id', 'created_at', 'updated_at',
+]);
+
 function shrinkValue(value, depth) {
   if (depth > 6) return value;
   if (typeof value === 'string') {
@@ -311,9 +321,16 @@ function shrinkValue(value, depth) {
   }
   if (value && typeof value === 'object') {
     const entries = Object.entries(value);
-    const kept = entries.slice(0, MAX_OBJECT_KEYS).map(([k, v]) => [k, shrinkValue(v, depth + 1)]);
-    if (entries.length > MAX_OBJECT_KEYS) {
-      kept.push(['_more_fields_not_shown', entries.length - MAX_OBJECT_KEYS]);
+    if (entries.length <= MAX_OBJECT_KEYS) {
+      return Object.fromEntries(entries.map(([k, v]) => [k, shrinkValue(v, depth + 1)]));
+    }
+    const priority = entries.filter(([k]) => PRIORITY_KEYS.has(k));
+    const rest = entries.filter(([k]) => !PRIORITY_KEYS.has(k));
+    const restBudget = Math.max(MAX_OBJECT_KEYS - priority.length, 0);
+    const totalKept = priority.length + Math.min(rest.length, restBudget);
+    const kept = [...priority, ...rest.slice(0, restBudget)].map(([k, v]) => [k, shrinkValue(v, depth + 1)]);
+    if (entries.length > totalKept) {
+      kept.push(['_more_fields_not_shown', entries.length - totalKept]);
     }
     return Object.fromEntries(kept);
   }

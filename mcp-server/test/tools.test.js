@@ -414,6 +414,24 @@ test('shrinkForModel caps object key count and adds a marker key', () => {
   assert.strictEqual(result.custom_fields._more_fields_not_shown, 5);
 });
 
+test('shrinkForModel keeps id/subject/status even when they fall outside the first 15 keys', () => {
+  // Mirrors a real Freshdesk ticket: several empty cc/bcc arrays come first, and the
+  // fields a human actually needs to identify the ticket (subject, id) come later.
+  const ticket = {
+    cc_emails: [], fwd_emails: [], reply_cc_emails: [], ticket_cc_emails: [], ticket_bcc_emails: [],
+    fr_escalated: false, spam: false, email_config_id: 1, group_id: 2, priority: 2,
+    requester_id: 3, responder_id: 4, source: 1, company_id: null, status: 2,
+    subject: 'Cannot log in', association_type: 1, support_email: null, to_emails: null,
+    product_id: 1, id: 20921517, type: 'Bug', padding: 'x'.repeat(9000),
+  };
+  const items = Array.from({ length: 15 }, () => ticket);
+  const result = shrinkForModel({ results: items });
+  const first = result.results[0];
+  assert.strictEqual(first.id, 20921517);
+  assert.strictEqual(first.subject, 'Cannot log in');
+  assert.strictEqual(first.status, 2);
+});
+
 test('shrinkForModel passes through null/undefined', () => {
   assert.strictEqual(shrinkForModel(null), null);
   assert.strictEqual(shrinkForModel(undefined), undefined);
