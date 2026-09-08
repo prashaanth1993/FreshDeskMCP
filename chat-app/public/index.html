@@ -125,8 +125,15 @@
     }
     .tool-pill-name { font-weight: 700; flex-shrink: 0; }
     .tool-pill-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #3b82f6; }
-    .tool-pill-error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
-    .tool-pill-error .tool-pill-preview { color: #dc2626; white-space: normal; }
+    .tool-pill-error {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+      flex-direction: column;
+      align-items: flex-start;
+      overflow: visible;
+    }
+    .tool-pill-error .tool-pill-preview { color: #dc2626; white-space: normal; overflow: visible; text-overflow: clip; }
     .fix-form {
       margin-top: 4px;
       padding: 10px;
@@ -423,8 +430,11 @@
           nameEl.className = 'tool-pill-name';
           nameEl.textContent = (tc.isError ? '⚠️ ' : '🔧 ') + tc.name;
 
+          // Error text is short and diagnostic-critical (e.g. the exact Freshdesk
+          // validation message) — show it in full. Success previews stay truncated
+          // since they're just a quick glance at potentially large result data.
           const preview = typeof tc.result === 'string'
-            ? tc.result.substring(0, 100) + (tc.result.length > 100 ? '…' : '')
+            ? (tc.isError ? tc.result : tc.result.substring(0, 100) + (tc.result.length > 100 ? '…' : ''))
             : '';
           const previewEl = document.createElement('span');
           previewEl.className = 'tool-pill-preview';
