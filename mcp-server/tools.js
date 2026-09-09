@@ -74,11 +74,17 @@ export function buildTools(oas) {
  * Throws if mine is requested but agentId is not configured.
  */
 export function applyMineFilter(toolName, args, agentId) {
-  if (!args || !args.mine) return args;
+  if (!args) return args;
+  const { mine, ...rest } = args;
+  // `mine` is a synthetic property we add to search_tickets/list_tickets' schema —
+  // it isn't a real Freshdesk param, so it must never survive to the actual request,
+  // even when explicitly false (the model sometimes passes mine:false rather than
+  // omitting it, which previously leaked straight through to Freshdesk as an
+  // unrecognized field and caused an avoidable 400).
+  if (!mine) return rest;
   if (!agentId) {
     throw new Error('mine: true requires FRESHDESK_AGENT_ID to be set in .env');
   }
-  const { mine, ...rest } = args;
   if (toolName === 'search_tickets') {
     const existing = (rest.query || '').trim();
     const mineExpr = `agent_id:${agentId}`;

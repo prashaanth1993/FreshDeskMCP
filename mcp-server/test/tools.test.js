@@ -198,6 +198,12 @@ test('applyMineFilter ignores mine on unrelated tools', () => {
   assert.deepStrictEqual(out, { ticket_id: 1 });
 });
 
+test('applyMineFilter strips a literal mine:false instead of forwarding it to Freshdesk', () => {
+  const out = applyMineFilter('search_tickets', { mine: false, query: 'status:3' }, '123');
+  assert.deepStrictEqual(out, { query: 'status:3' });
+  assert.ok(!('mine' in out), 'mine:false must not survive — Freshdesk rejects it as an unknown field');
+});
+
 // ─── requestBody / write-method tests ─────────────────────────────
 
 test('buildTools extracts requestBody properties as inputSchema fields', () => {

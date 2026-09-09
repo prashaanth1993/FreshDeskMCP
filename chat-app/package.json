@@ -1,6 +1,6 @@
 {
   "name": "freshdesk-chat-app",
-  "version": "1.0.0",
+  "version": "1.2.7",
   "type": "module",
   "main": "server.js",
   "scripts": {
